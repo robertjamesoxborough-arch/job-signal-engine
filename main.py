@@ -1,5 +1,5 @@
 from supabase import create_client
-from config import SUPABASE_URL, SUPABASE_KEY, KEYWORDS, UK_FILTER_TERMS
+from config import SUPABASE_URL, SUPABASE_KEY, KEYWORDS
 from scrapers.greenhouse import fetch_greenhouse_jobs
 from scrapers.ashby import fetch_ashby_jobs
 from scrapers.workday import fetch_workday_jobs
@@ -18,9 +18,7 @@ GREENHOUSE_COMPANIES = [
     "shopify"
 ]
 
-ASHBY_COMPANIES = [
-    "claylabs"
-]
+ASHBY_COMPANIES = ["claylabs"]
 
 WORKDAY_SOURCES = [
     {
@@ -36,6 +34,11 @@ def keyword_filter(title):
     return [k for k in KEYWORDS if k in title_lower]
 
 
+def fetch_existing_ids():
+    res = supabase.table("jobs").select("external_id,company").execute()
+    return {(r["external_id"], r["company"]) for r in res.data}
+
+
 def store_job(job):
     supabase.table("jobs") \
         .upsert(job, on_conflict="external_id,company") \
@@ -43,41 +46,48 @@ def store_job(job):
 
 
 def run():
+    existing_ids = fetch_existing_ids()
+    new_jobs = []
+
     all_jobs = []
 
     for company in GREENHOUSE_COMPANIES:
         try:
-            jobs = fetch_greenhouse_jobs(company)
-            all_jobs.extend(jobs)
-        except Exception:
-            continue
+            all_jobs += fetch_greenhouse_jobs(company)
+        except:
+            pass
 
     for company in ASHBY_COMPANIES:
         try:
-            jobs = fetch_ashby_jobs(company)
-            all_jobs.extend(jobs)
-        except Exception:
-            continue
+            all_jobs += fetch_ashby_jobs(company)
+        except:
+            pass
 
     for source in WORKDAY_SOURCES:
         try:
-            jobs = fetch_workday_jobs(
+            all_jobs += fetch_workday_jobs(
                 source["url"],
                 source["label"],
-                source.get("country")
+                source["country"]
             )
-            all_jobs.extend(jobs)
-        except Exception:
-            continue
+        except:
+            pass
 
     for job in all_jobs:
         matches = keyword_filter(job["title"])
         if not matches:
             continue
 
-        job["keyword_match"] = matches
+        key = (job["external_id"], job["company"])
+
+        if key not in existing_ids:
+            new_jobs.append(job)
+
         store_job(job)
+
+    return new_jobs
 
 
 if __name__ == "__main__":
-    run()
+    new = run()
+    print(f"New jobs found: {len(new)}")

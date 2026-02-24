@@ -12,20 +12,25 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.11'
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Inject environment variables
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
+          echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> .env
 
-      - name: Run job engine
-        run: python main.py
+      - name: Run engine and capture new jobs
+        run: |
+          python - << 'EOF'
+from main import run
+from notify import send_email
+new_jobs = run()
+send_email(new_jobs)
+print("New jobs:", len(new_jobs))
