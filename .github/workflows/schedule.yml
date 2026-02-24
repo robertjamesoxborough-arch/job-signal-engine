@@ -20,17 +20,11 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Inject environment variables
+      - name: Create .env file
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
           echo "SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env
           echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> .env
 
-      - name: Run engine and capture new jobs
-        run: |
-          python - << 'EOF'
-from main import run
-from notify import send_email
-new_jobs = run()
-send_email(new_jobs)
-print("New jobs:", len(new_jobs))
+      - name: Run job engine
+        run: python run_with_notify.py
