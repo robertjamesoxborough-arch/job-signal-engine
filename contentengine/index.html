@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Engine &middot; AI-Powered Content Generator &amp; Ads Optimizer</title>
+    <meta name="description" content="Generate world-class content across all social channels. AI-powered content creation, scheduling, and paid ads optimization.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="content-generator.css">
+</head>
+<body class="cg-body">
+
+    <!-- ============ TOP NAV ============ -->
+    <nav class="cg-topnav">
+        <div class="cg-topnav-left">
+            <div class="cg-logo" onclick="switchView('clients')" style="cursor:pointer;">
+                <div class="cg-logo-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </div>
+                <span class="cg-logo-text">ContentEngine<span class="cg-logo-ai">AI</span></span>
+            </div>
+            <!-- Client Switcher -->
+            <div class="cg-client-switcher" id="clientSwitcher">
+                <button class="cg-client-switcher-btn" onclick="toggleClientDropdown()" id="clientSwitcherBtn">
+                    <span class="cg-client-dot" id="activeClientDot"></span>
+                    <span id="activeClientName">Select Client</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="cg-client-dropdown" id="clientDropdown" style="display:none;">
+                    <div class="cg-client-dropdown-header">
+                        <span>Your Clients</span>
+                        <button class="cg-btn cg-btn-ghost cg-btn-sm" onclick="switchView('clients'); toggleClientDropdown();">Manage</button>
+                    </div>
+                    <div class="cg-client-dropdown-list" id="clientDropdownList">
+                        <!-- Populated dynamically -->
+                    </div>
+                    <button class="cg-client-dropdown-add" onclick="openAddClientModal(); toggleClientDropdown();">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add New Client
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="cg-topnav-center">
+            <button class="cg-nav-tab active" data-view="growthplan" onclick="switchView('growthplan')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                Decision Engine
+            </button>
+            <button class="cg-nav-tab" data-view="clients" onclick="switchView('clients')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Clients
+            </button>
+            <button class="cg-nav-tab" data-view="create" onclick="switchView('create')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                Create
+            </button>
+            <button class="cg-nav-tab" data-view="calendar" onclick="switchView('calendar')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Calendar
+            </button>
+            <button class="cg-nav-tab" data-view="analytics" onclick="switchView('analytics')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                Analytics
+            </button>
+        </div>
+        <div class="cg-topnav-right">
+            <button type="button" class="cg-btn cg-btn-secondary cg-btn-sm" onclick="openAssetLibrary()" id="assetLibraryBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                Assets
+                <span class="cg-int-badge" id="assetBadge" style="display:none;"></span>
+            </button>
+            <button type="button" class="cg-btn cg-btn-secondary cg-btn-sm" onclick="openIntegrations()" id="integrationsBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M12 2v2M12 20v2M19.07 19.07l-1.41-1.41M4.93 19.07l1.41-1.41M2 12h2M20 12h2"/></svg>
+                Integrations
+                <span class="cg-int-badge" id="intBadge" style="display:none;"></span>
+            </button>
+            <button class="cg-btn-icon" title="Notifications">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                <span class="cg-notif-dot"></span>
+            </button>
+            <div class="cg-avatar">
+                <span>U</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ============ MAIN CONTENT ============ -->
+    <main class="cg-main">
+
+        <!-- ======== CLIENTS VIEW ======== -->
+        <div class="cg-view" id="view-clients">
+            <div class="cg-view-header">
+                <div>
+                    <h1>Your Clients</h1>
+                    <p>Manage all your clients from one dashboard. Switch between accounts instantly.</p>
+                </div>
+                <button class="cg-btn cg-btn-primary" onclick="openAddClientModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Client
+                </button>
+            </div>
+
+            <!-- Clients Overview Stats -->
+            <div class="cg-clients-stats">
+                <div class="cg-ads-stat-card">
+                    <div class="cg-ads-stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3B82F6;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div class="cg-ads-stat-content">
+                        <span class="cg-ads-stat-label">Total Clients</span>
+                        <span class="cg-ads-stat-value" id="statTotalClients">0</span>
+                    </div>
+                </div>
+                <div class="cg-ads-stat-card">
+                    <div class="cg-ads-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: var(--emerald-500);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                    <div class="cg-ads-stat-content">
+                        <span class="cg-ads-stat-label">Content Created</span>
+                        <span class="cg-ads-stat-value" id="statTotalContent">0</span>
+                    </div>
+                </div>
+                <div class="cg-ads-stat-card">
+                    <div class="cg-ads-stat-icon" style="background: rgba(245, 158, 11, 0.1); color: var(--gold-500);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <div class="cg-ads-stat-content">
+                        <span class="cg-ads-stat-label">Active Channels</span>
+                        <span class="cg-ads-stat-value" id="statTotalSpend">0</span>
+                    </div>
+                </div>
+                <div class="cg-ads-stat-card">
+                    <div class="cg-ads-stat-icon" style="background: rgba(168, 85, 247, 0.1); color: #A855F7;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
+                    <div class="cg-ads-stat-content">
+                        <span class="cg-ads-stat-label">Integrations</span>
+                        <span class="cg-ads-stat-value" id="statAvgRoas">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Cards Grid -->
+            <div class="cg-clients-grid" id="clientsGrid">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Empty State -->
+            <div class="cg-clients-empty" id="clientsEmpty">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <h2>No clients yet</h2>
+                <p>Add your first client to start generating world-class content across all their channels.</p>
+                <button class="cg-btn cg-btn-primary" onclick="openAddClientModal()">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Add Your First Client
+                </button>
+            </div>
+        </div>
+
+        <!-- ======== CREATE VIEW ======== -->
+        <div class="cg-view" id="view-create">
+
+            <!-- Wizard Progress -->
+            <div class="cg-wizard-progress">
+                <div class="cg-wizard-steps">
+                    <div class="cg-wizard-step active" data-step="1">
+                        <div class="cg-step-num">1</div>
+                        <span>Strategy</span>
+                    </div>
+                    <div class="cg-wizard-connector"></div>
+                    <div class="cg-wizard-step" data-step="2">
+                        <div class="cg-step-num">2</div>
+                        <span>Channels</span>
+                    </div>
+                    <div class="cg-wizard-connector"></div>
+                    <div class="cg-wizard-step" data-step="3">
+                        <div class="cg-step-num">3</div>
+                        <span>Content</span>
+                    </div>
+                    <div class="cg-wizard-connector"></div>
+                    <div class="cg-wizard-step" data-step="4">
+                        <div class="cg-step-num">4</div>
+                        <span>Media</span>
+                    </div>
+                    <div class="cg-wizard-connector"></div>
+                    <div class="cg-wizard-step" data-step="5">
+                        <div class="cg-step-num">5</div>
+                        <span>Review &amp; Publish</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 1: Strategy -->
+            <div class="cg-step-panel active" id="step-1">
+                <div class="cg-step-header">
+                    <h1>Let's Build Your Content Strategy</h1>
+                    <p>Tell us about your brand and what you want to achieve. Our AI will generate perfectly tailored content.</p>
+                </div>
+
+                <div class="cg-form-grid">
+                    <!-- Brand / Niche -->
+                    <div class="cg-form-group cg-full">
+                        <label>What's your brand or niche?</label>
+                        <input type="text" id="brandNiche" class="cg-input" placeholder="e.g. Fitness coaching for busy professionals, SaaS startup, E-commerce fashion...">
+                    </div>
+
+                    <!-- Content Goal -->
+                    <div class="cg-form-group">
+                        <label>What's your primary goal?</label>
+                        <div class="cg-chip-select" id="goalSelect">
+                            <button class="cg-chip" data-value="awareness">Brand Awareness</button>
+                            <button class="cg-chip" data-value="engagement">Drive Engagement</button>
+                            <button class="cg-chip" data-value="leads">Generate Leads</button>
+                            <button class="cg-chip" data-value="sales">Increase Sales</button>
+                            <button class="cg-chip" data-value="authority">Build Authority</button>
+                            <button class="cg-chip" data-value="community">Grow Community</button>
+                        </div>
+                    </div>
+
+                    <!-- Tone -->
+                    <div class="cg-form-group">
+                        <label>What tone fits your brand?</label>
+                        <div class="cg-chip-select" id="toneSelect">
+                            <button class="cg-chip" data-value="professional">Professional</button>
+                            <button class="cg-chip" data-value="casual">Casual &amp; Friendly</button>
+                            <button class="cg-chip" data-value="bold">Bold &amp; Edgy</button>
+                            <button class="cg-chip" data-value="inspirational">Inspirational</button>
+                            <button class="cg-chip" data-value="educational">Educational</button>
+                            <button class="cg-chip" data-value="humorous">Humorous</button>
+                        </div>
+                    </div>
+
+                    <!-- Target Audience -->
+                    <div class="cg-form-group cg-full">
+                        <label>Describe your target audience</label>
+                        <textarea id="targetAudience" class="cg-textarea" rows="3" placeholder="e.g. Small business owners looking to grow their online presence, fitness enthusiasts aged 25-40..."></textarea>
+                    </div>
+
+                    <!-- Content to Copy / Reference -->
+                    <div class="cg-form-group cg-full">
+                        <label>Any content or competitor you want to model? <span class="cg-optional">(optional)</span></label>
+                        <textarea id="contentReference" class="cg-textarea" rows="3" placeholder="Paste a URL, describe a style, or reference a competitor whose content you admire..."></textarea>
+                    </div>
+
+                    <!-- How many pieces -->
+                    <div class="cg-form-group">
+                        <label>How many content pieces do you need?</label>
+                        <div class="cg-quantity-selector">
+                            <button class="cg-qty-btn" onclick="adjustQty(-1)">-</button>
+                            <input type="number" id="contentQty" class="cg-qty-input" value="5" min="1" max="100">
+                            <button class="cg-qty-btn" onclick="adjustQty(1)">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Content Types -->
+                    <div class="cg-form-group">
+                        <label>What types of content?</label>
+                        <div class="cg-chip-select multi" id="typeSelect">
+                            <button class="cg-chip" data-value="post">Posts</button>
+                            <button class="cg-chip" data-value="story">Stories</button>
+                            <button class="cg-chip" data-value="reel">Reels/Shorts</button>
+                            <button class="cg-chip" data-value="carousel">Carousels</button>
+                            <button class="cg-chip" data-value="thread">Threads</button>
+                            <button class="cg-chip" data-value="article">Articles</button>
+                            <button class="cg-chip" data-value="ad">Ad Creatives</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cg-step-actions">
+                    <div></div>
+                    <button class="cg-btn cg-btn-primary" onclick="goToStep(2)">
+                        Continue to Channels
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 2: Channels -->
+            <div class="cg-step-panel" id="step-2">
+                <div class="cg-step-header">
+                    <h1>Select Your Channels</h1>
+                    <p>Choose where you want to publish. We'll optimize content format and copy for each platform.</p>
+                </div>
+
+                <div class="cg-channels-grid">
+                    <!-- Instagram -->
+                    <div class="cg-channel-card" data-channel="instagram" onclick="toggleChannel(this)">
+                        <div class="cg-channel-icon" style="background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+                        </div>
+                        <h3>Instagram</h3>
+                        <p>Posts, Stories, Reels</p>
+                        <div class="cg-channel-check">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- TikTok -->
+                    <div class="cg-channel-card" data-channel="tiktok" onclick="toggleChannel(this)">
+                        <div class="cg-channel-icon" style="background: #000;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1v-3.5a6.37 6.37 0 00-.79-.05A6.34 6.34 0 003.15 15.2a6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.34-6.34V8.75a8.24 8.24 0 004.79 1.53V6.83a4.84 4.84 0 01-1.03-.14z"/></svg>
+                        </div>
+                        <h3>TikTok</h3>
+                        <p>Short-form Video</p>
+                        <div class="cg-channel-check">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- Facebook -->
+                    <div class="cg-channel-card" data-channel="facebook" onclick="toggleChannel(this)">
+                        <div class="cg-channel-icon" style="background: #1877F2;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        </div>
+                        <h3>Facebook</h3>
+                        <p>Posts, Stories, Ads</p>
+                        <div class="cg-channel-check">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- LinkedIn -->
+                    <div class="cg-channel-card" data-channel="linkedin" onclick="toggleChannel(this)">
+                        <div class="cg-channel-icon" style="background: #0A66C2;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                        </div>
+                        <h3>LinkedIn</h3>
+                        <p>Posts, Articles</p>
+                        <div class="cg-channel-check">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- X / Twitter -->
+                    <div class="cg-channel-card" data-channel="twitter" onclick="toggleChannel(this)">
+                        <div class="cg-channel-icon" style="background: #000;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                        </div>
+                        <h3>X (Twitter)</h3>
+                        <p>Tweets, Threads</p>
+                        <div class="cg-channel-check">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- YouTube -->
+                    <div class="cg-channel-card" data-channel="youtube" onclick="toggleChannel(this)">
+                        <div class="cg-channel-icon" style="background: #FF0000;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                        </div>
+                        <h3>YouTube</h3>
+                        <p>Shorts, Descriptions</p>
+                        <div class="cg-channel-check">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- Pinterest -->
+                    <div class="cg-channel-card" data-channel="pinterest" onclick="toggleChannel(this)">
+                        <div class="cg-channel-icon" style="background: #E60023;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 1.031.397 2.138.893 2.738a.36.36 0 01.083.345l-.333 1.36c-.053.22-.174.267-.402.161-1.499-.698-2.436-2.889-2.436-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24 12.017 24c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641 0 12.017 0z"/></svg>
+                        </div>
+                        <h3>Pinterest</h3>
+                        <p>Pins, Idea Pins</p>
+                        <div class="cg-channel-check">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="cg-channel-card" data-channel="email" onclick="toggleChannel(this)">
+                        <div class="cg-channel-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        </div>
+                        <h3>Email</h3>
+                        <p>Newsletters, Sequences</p>
+                        <div class="cg-channel-check">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="cg-step-actions">
+                    <button class="cg-btn cg-btn-ghost" onclick="goToStep(1)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                        Back
+                    </button>
+                    <button class="cg-btn cg-btn-primary" onclick="goToStep(3)">
+                        Generate Content
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 3: Generated Content -->
+            <div class="cg-step-panel" id="step-3">
+                <div class="cg-step-header">
+                    <h1>Your AI-Generated Content</h1>
+                    <p>Review, edit, and perfect your content. Each piece is optimized for its target platform.</p>
+                </div>
+
+                <!-- AI Generation Loading -->
+                <div class="cg-ai-loading" id="aiLoading" style="display:none;">
+                    <div class="cg-ai-pulse"></div>
+                    <h2>AI is crafting your content...</h2>
+                    <p id="aiLoadingStatus">Analyzing your brand voice and audience...</p>
+                    <div class="cg-progress-bar">
+                        <div class="cg-progress-fill" id="aiProgressFill"></div>
+                    </div>
+                </div>
+
+                <!-- Content Cards -->
+                <div class="cg-content-list" id="contentList">
+                    <!-- Dynamically populated -->
+                </div>
+
+                <div class="cg-step-actions">
+                    <button class="cg-btn cg-btn-ghost" onclick="goToStep(2)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                        Back
+                    </button>
+                    <button class="cg-btn cg-btn-secondary" onclick="regenerateAll()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Regenerate All
+                    </button>
+                    <button class="cg-btn cg-btn-primary" onclick="goToStep(4)">
+                        Add Media
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STEP 4: Media -->
+            <div class="cg-step-panel" id="step-4">
+                <div class="cg-step-header">
+                    <h1>Add Visual Media</h1>
+                    <p>Browse free stock images and videos, or upload your own. Great visuals = great engagement.</p>
+                </div>
+
+                <div class="cg-media-section">
+                    <!-- Upload Area -->
+                    <div class="cg-upload-zone" id="uploadZone" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <h3>Drag &amp; drop your files here</h3>
+                        <p>or click to browse &middot; Images, Videos, GIFs</p>
+                        <input type="file" id="fileInput" multiple accept="image/*,video/*" onchange="handleFileSelect(event)" style="display:none;">
+                        <button class="cg-btn cg-btn-secondary" onclick="document.getElementById('fileInput').click()">Browse Files</button>
+                    </div>
+
+                    <!-- Uploaded Files Preview -->
+                    <div class="cg-uploaded-files" id="uploadedFiles" style="display:none;">
+                        <h3>Your Uploads</h3>
+                        <div class="cg-file-grid" id="fileGrid"></div>
+                    </div>
+
+                    <!-- Stock Media Search -->
+                    <div class="cg-stock-section">
+                        <div class="cg-stock-header">
+                            <div>
+                                <h3>Free Stock Media</h3>
+                                <p class="cg-stock-subtitle">Real photos from Unsplash &amp; Pexels — free for commercial use. Not for product shots — use your own uploads for those.</p>
+                            </div>
+                            <div class="cg-stock-sources">
+                                <span class="cg-stock-source-badge unsplash">Unsplash</span>
+                                <span class="cg-stock-source-badge pexels">Pexels</span>
+                            </div>
+                        </div>
+                        <div class="cg-stock-search-row">
+                            <div class="cg-stock-search">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" id="stockSearch" class="cg-input" placeholder="e.g. lifestyle, fitness, office, food...">
+                                <button type="button" class="cg-btn cg-btn-secondary cg-btn-sm" onclick="triggerStockSearch()">Search</button>
+                            </div>
+                        </div>
+                        <div class="cg-stock-suggestions">
+                            <span class="cg-stock-chip" onclick="quickStockSearch('lifestyle')">✨ Lifestyle</span>
+                            <span class="cg-stock-chip" onclick="quickStockSearch('business team')">👥 Business</span>
+                            <span class="cg-stock-chip" onclick="quickStockSearch('fitness wellness')">💪 Fitness</span>
+                            <span class="cg-stock-chip" onclick="quickStockSearch('food restaurant')">🍽️ Food</span>
+                            <span class="cg-stock-chip" onclick="quickStockSearch('technology laptop')">💻 Tech</span>
+                            <span class="cg-stock-chip" onclick="quickStockSearch('fashion style')">👗 Fashion</span>
+                            <span class="cg-stock-chip" onclick="quickStockSearch('nature outdoor')">🌿 Nature</span>
+                            <span class="cg-stock-chip" onclick="quickStockSearch('city urban')">🏙️ Urban</span>
+                        </div>
+                        <div class="cg-stock-tabs">
+                            <button type="button" class="cg-stock-tab active" id="stockTabPhotos" onclick="switchStockTab('photos', this)">Photos</button>
+                            <button type="button" class="cg-stock-tab" id="stockTabVideos" onclick="switchStockTab('videos', this)">Videos</button>
+                        </div>
+                        <div class="cg-stock-grid" id="stockGrid">
+                            <div class="cg-stock-empty-state">
+                                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <p>Search above or pick a category to browse free stock photos</p>
+                            </div>
+                        </div>
+                        <div id="stockLoadMore" style="display:none;text-align:center;margin-top:1rem;">
+                            <button type="button" class="cg-btn cg-btn-ghost cg-btn-sm" onclick="loadMoreStock()">Load more photos</button>
+                        </div>
+                    </div>
+
+                <div class="cg-step-actions">
+                    <button class="cg-btn cg-btn-ghost" onclick="goToStep(3)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                        Back
+                    </button>
+                    <button class="cg-btn cg-btn-primary" onclick="goToStep(5)">
+                        Review &amp; Publish
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+            </div>
+
+            <!-- STEP 5: Review & Publish -->
+            <div class="cg-step-panel" id="step-5">
+                <div class="cg-step-header">
+                    <h1>Review &amp; Publish</h1>
+                    <p>Preview your content across all platforms. Schedule or publish immediately.</p>
+                </div>
+
+                <div class="cg-review-grid" id="reviewGrid">
+                    <!-- Dynamically populated -->
+                </div>
+
+                <!-- Schedule Section -->
+                <div class="cg-schedule-section">
+                    <h3>Publishing Schedule</h3>
+                    <div class="cg-schedule-options">
+                        <label class="cg-radio-card active" onclick="selectSchedule('now', this)">
+                            <input type="radio" name="schedule" value="now" checked>
+                            <div class="cg-radio-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            </div>
+                            <div>
+                                <strong>Publish Now</strong>
+                                <p>Post immediately to all channels</p>
+                            </div>
+                        </label>
+                        <label class="cg-radio-card" onclick="selectSchedule('optimal', this)">
+                            <input type="radio" name="schedule" value="optimal">
+                            <div class="cg-radio-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            </div>
+                            <div>
+                                <strong>AI Optimal Times</strong>
+                                <p>Post when your audience is most active</p>
+                            </div>
+                        </label>
+                        <label class="cg-radio-card" onclick="selectSchedule('custom', this)">
+                            <input type="radio" name="schedule" value="custom">
+                            <div class="cg-radio-icon">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            </div>
+                            <div>
+                                <strong>Custom Schedule</strong>
+                                <p>Choose your own dates and times</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="cg-step-actions">
+                    <button class="cg-btn cg-btn-ghost" onclick="goToStep(4)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+                        Back
+                    </button>
+                    <button class="cg-btn cg-btn-primary cg-btn-large" onclick="publishAll()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+                        Publish to All Channels
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======== CALENDAR VIEW ======== -->
+        <div class="cg-view" id="view-calendar">
+            <div class="cg-view-header">
+                <div>
+                    <h1>Content Calendar</h1>
+                    <p>Plan and visualize your content schedule across all channels</p>
+                </div>
+                <button class="cg-btn cg-btn-primary" onclick="switchView('create')">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    Create Content
+                </button>
+            </div>
+
+            <div class="cg-calendar-controls">
+                <button class="cg-btn cg-btn-ghost" onclick="calendarNav(-1)">&larr; Previous</button>
+                <h2 id="calendarMonth">March 2026</h2>
+                <button class="cg-btn cg-btn-ghost" onclick="calendarNav(1)">Next &rarr;</button>
+            </div>
+
+            <div class="cg-calendar-grid" id="calendarGrid">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+
+        <!-- ======== ADS ENGINE VIEW ======== -->
+        <div class="cg-view" id="view-ads">
+            <div class="cg-view-header">
+                <div>
+                    <h1>Paid Ads Engine</h1>
+                    <p>Launch and track campaigns across all paid channels. Connect platforms to see live performance.</p>
+                </div>
+                <div class="cg-header-actions">
+                    <button class="cg-btn cg-btn-secondary" onclick="runAdsAudit()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Run Audit
+                    </button>
+                    <button class="cg-btn cg-btn-primary" onclick="createAdCampaign()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        New Campaign
+                    </button>
+                </div>
+            </div>
+
+            <!-- Ads stats - populated from real data when platforms connected -->
+            <div class="cg-ads-stats" id="adsStatsGrid">
+                <div class="cg-ads-stat-card">
+                    <div class="cg-ads-stat-icon" style="background:rgba(16,185,129,0.1);color:var(--emerald-500);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    </div>
+                    <div class="cg-ads-stat-content">
+                        <span class="cg-ads-stat-label">Total Ad Spend</span>
+                        <span class="cg-ads-stat-value" id="adsStatSpend">—</span>
+                        <span class="cg-ads-stat-change" id="adsStatSpendChange">Connect a platform to track</span>
+                    </div>
+                </div>
+                <div class="cg-ads-stat-card">
+                    <div class="cg-ads-stat-icon" style="background:rgba(59,130,246,0.1);color:#3B82F6;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </div>
+                    <div class="cg-ads-stat-content">
+                        <span class="cg-ads-stat-label">Impressions</span>
+                        <span class="cg-ads-stat-value" id="adsStatImpressions">—</span>
+                        <span class="cg-ads-stat-change" id="adsStatImpressionsChange">No data yet</span>
+                    </div>
+                </div>
+                <div class="cg-ads-stat-card">
+                    <div class="cg-ads-stat-icon" style="background:rgba(245,158,11,0.1);color:var(--gold-500);">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    </div>
+                    <div class="cg-ads-stat-content">
+                        <span class="cg-ads-stat-label">Conversions</span>
+                        <span class="cg-ads-stat-value" id="adsStatConversions">—</span>
+                        <span class="cg-ads-stat-change" id="adsStatConversionsChange">No data yet</span>
+                    </div>
+                </div>
+                <div class="cg-ads-stat-card">
+                    <div class="cg-ads-stat-icon" style="background:rgba(168,85,247,0.1);color:#A855F7;">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+                    </div>
+                    <div class="cg-ads-stat-content">
+                        <span class="cg-ads-stat-label">ROAS</span>
+                        <span class="cg-ads-stat-value" id="adsStatRoas">—</span>
+                        <span class="cg-ads-stat-change" id="adsStatRoasChange">No data yet</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- No platform connected state -->
+            <div class="cg-ads-no-platform" id="adsNoPlatform">
+                <div class="cg-ads-no-platform-inner">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    <h3>No ad platforms connected yet</h3>
+                    <p>Connect Meta Ads, Google Ads, or TikTok Ads in the Integrations panel to see live campaign data here. Or use the Growth Plan tab to launch campaigns directly without an integration.</p>
+                    <div class="cg-ads-no-platform-btns">
+                        <button class="cg-btn cg-btn-primary" onclick="openIntegrations()">Connect Platforms</button>
+                        <button class="cg-btn cg-btn-secondary" onclick="switchView('growthplan')">Launch via Growth Plan</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Platform cards - shown when integrations exist -->
+            <div class="cg-ads-platforms" id="adsPlatformsSection" style="display:none;">
+                <h2>Connected Platforms</h2>
+                <p class="cg-ads-subtitle">Live data from your connected ad accounts</p>
+                <div class="cg-platforms-grid" id="adsPlatformsGrid"></div>
+            </div>
+
+            <!-- AI Optimization Log -->
+            <div class="cg-ai-log" id="adsAiLog">
+                <div class="cg-ai-log-header">
+                    <h2>Activity Log</h2>
+                    <p class="cg-ads-subtitle">Actions and events from your campaigns</p>
+                </div>
+                <div class="cg-log-list" id="aiLogList">
+                    <div class="cg-log-empty">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        <p>No activity yet. Launch a campaign to start seeing activity here.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ======== ANALYTICS VIEW ======== -->
+        <div class="cg-view" id="view-analytics">
+            <div class="cg-view-header">
+                <div>
+                    <h1>Performance Analytics</h1>
+                    <p>Connect Google Analytics to see real traffic, conversions and audience data per client.</p>
+                </div>
+                <div class="cg-header-actions">
+                    <select class="cg-select" id="analyticsRange" onchange="renderAnalytics()">
+                        <option value="7">Last 7 days</option>
+                        <option value="28" selected>Last 28 days</option>
+                        <option value="90">Last 90 days</option>
+                    </select>
+                    <button class="cg-btn cg-btn-secondary" onclick="refreshAnalytics()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <!-- GA not connected state -->
+            <div class="cg-analytics-connect-banner" id="gaConnectBanner">
+                <div class="cg-analytics-connect-inner">
+                    <div class="cg-analytics-connect-left">
+                        <div class="cg-analytics-connect-logo">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><rect x="2" y="12" width="4" height="10" rx="1" fill="#F4B400"/><rect x="10" y="6" width="4" height="16" rx="1" fill="#4285F4"/><rect x="18" y="2" width="4" height="20" rx="1" fill="#34A853"/></svg>
+                        </div>
+                        <div>
+                            <strong>Connect Google Analytics 4</strong>
+                            <p>See real sessions, bounce rate, conversions and top pages for each client's website.</p>
+                        </div>
+                    </div>
+                    <button class="cg-btn cg-btn-primary" onclick="openGaSetup()">Connect GA4</button>
+                </div>
+            </div>
+
+            <!-- GA connected - real stats grid -->
+            <div id="gaStatsSection" style="display:none;">
+                <div class="cg-analytics-grid" id="gaStatsGrid"></div>
+
+                <!-- Traffic sources -->
+                <div class="cg-analytics-section">
+                    <h2>Traffic Sources</h2>
+                    <div class="cg-traffic-sources" id="gaTrafficSources"></div>
+                </div>
+
+                <!-- Top pages -->
+                <div class="cg-analytics-section">
+                    <h2>Top Pages</h2>
+                    <div class="cg-breakdown-table" id="gaTopPages">
+                        <div class="cg-table-header">
+                            <span>Page</span>
+                            <span>Sessions</span>
+                            <span>Bounce Rate</span>
+                            <span>Avg. Time</span>
+                            <span>Conversions</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-time note -->
+                <div class="cg-analytics-note" id="gaLastUpdated"></div>
+            </div>
+
+            <!-- Content published (always real) -->
+            <div class="cg-analytics-section">
+                <h2>Content Published</h2>
+                <p style="color:var(--gray-500);font-size:0.875rem;margin-bottom:1rem;">Content generated and published through this tool</p>
+                <div class="cg-analytics-grid">
+                    <div class="cg-analytics-card">
+                        <div class="cg-analytics-header"><span>Total Generated</span></div>
+                        <div class="cg-analytics-value" id="analyticsPublished">0</div>
+                    </div>
+                    <div class="cg-analytics-card">
+                        <div class="cg-analytics-header"><span>Channels Active</span></div>
+                        <div class="cg-analytics-value" id="analyticsChannels">0</div>
+                    </div>
+                    <div class="cg-analytics-card">
+                        <div class="cg-analytics-header"><span>Integrations</span></div>
+                        <div class="cg-analytics-value" id="analyticsIntegrations">0</div>
+                    </div>
+                    <div class="cg-analytics-card">
+                        <div class="cg-analytics-header"><span>Assets Uploaded</span></div>
+                        <div class="cg-analytics-value" id="analyticsAssets">0</div>
+                    </div>
+                </div>
+                <div class="cg-channel-breakdown">
+                    <h2>Content by Channel</h2>
+                    <div class="cg-breakdown-table">
+                        <div class="cg-table-header">
+                            <span>Channel</span>
+                            <span>Pieces</span>
+                            <span>Types</span>
+                            <span>Last Generated</span>
+                            <span>Status</span>
+                        </div>
+                        <div id="analyticsTableBody">
+                            <div class="cg-table-empty">Generate content in the Create tab to see channel breakdown here.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+                <!-- ======== GROWTH PLAN VIEW ======== -->
+        <div class="cg-view active" id="view-growthplan">
+            <div class="cg-view-header">
+                <div>
+                    <h1>Decision Engine</h1>
+                    <p>What should you do next? Scored per client, ordered by impact.</p>
+                </div>
+                <div class="cg-header-actions">
+                    <button class="cg-btn cg-btn-secondary" onclick="runGrowthAudit()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Refresh Audit
+                    </button>
+                </div>
+            </div>
+
+            <!-- Client selector for growth plan -->
+            <div class="cg-gp-client-row" id="gpClientRow">
+                <!-- populated by JS -->
+            </div>
+
+            <!-- No client selected -->
+            <div class="cg-gp-empty" id="gpEmpty" style="display:none;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <p>Select a client above to run their growth audit</p>
+            </div>
+
+            <!-- Loading state -->
+            <div class="cg-gp-loading" id="gpLoading" style="display:none;">
+                <div class="cg-spinner" style="width:32px;height:32px;border-width:3px;"></div>
+                <p id="gpLoadingMsg">Scanning web presence...</p>
+            </div>
+
+            <!-- Main audit content -->
+            <div id="gpContent" style="display:none;">
+
+                <!-- Goal banner -->
+                <div id="gpGoalBanner" style="margin-bottom:1rem;"></div>
+
+                <!-- Strategy inference badge -->
+                <div id="gpStrategyBadge" style="margin-bottom:1.25rem;"></div>
+
+                <!-- Web presence score cards -->
+                <div class="cg-gp-scores" id="gpScores"></div>
+
+                <!-- Priority action plan -->
+                <div class="cg-gp-section">
+                    <div class="cg-gp-section-header">
+                        <div>
+                            <h2>Priority Action Plan</h2>
+                            <p>Do these in order — highest impact first</p>
+                        </div>
+                        <div class="cg-gp-progress-label" id="gpProgressLabel">0 / 0 done</div>
+                    </div>
+                    <div class="cg-gp-tasks" id="gpTasks"></div>
+                </div>
+
+                <!-- Not recommended right now -->
+                <div id="gpNotRecommended" style="display:none;">
+                    <div class="cg-gp-section-header" style="margin-bottom:0.75rem;">
+                        <div>
+                            <h2>Not recommended right now</h2>
+                            <p>Actions considered but filtered out — with the reason and what would change it</p>
+                        </div>
+                    </div>
+                    <div id="gpNotRecommendedList"></div>
+                </div>
+
+                <!-- Channel-by-channel breakdown -->
+                <div class="cg-gp-section">
+                    <h2>Channel Breakdown</h2>
+                    <p style="color:var(--gray-500);font-size:0.875rem;margin-bottom:1.25rem;">Where this client stands right now across every marketing channel</p>
+                    <div class="cg-gp-channels" id="gpChannels"></div>
+                </div>
+
+                <!-- Ads platform workarounds -->
+                <div class="cg-gp-section">
+                    <div class="cg-gp-section-header">
+                        <div>
+                            <h2>Launch Ads Without API Approval</h2>
+                            <p>Open pre-filled campaign forms directly in each platform — no integration required</p>
+                        </div>
+                    </div>
+                    <div class="cg-gp-ads-grid" id="gpAdsGrid"></div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ============ INTEGRATIONS PANEL (slide-in) ============ -->
+    <div class="cg-integrations-panel" id="integrationsPanel">
+
+        <!-- Header with client context -->
+        <div class="cg-integrations-header">
+            <div>
+                <h2>Integrations</h2>
+                <p id="intPanelClientLabel">Select a client to manage their connections</p>
+            </div>
+            <button type="button" class="cg-modal-close" onclick="closeIntegrations()">&times;</button>
+        </div>
+
+        <!-- Client selector inside panel -->
+        <div class="cg-int-client-bar" id="intClientBar">
+            <div class="cg-int-client-bar-inner" id="intClientBarInner">
+                <!-- populated by JS -->
+            </div>
+        </div>
+
+        <!-- No client state -->
+        <div class="cg-int-no-client" id="intNoClient">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--gray-300)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <p>Add a client first, then connect their platforms here</p>
+            <button type="button" class="cg-btn cg-btn-primary cg-btn-sm" onclick="closeIntegrations(); openAddClientModal();">Add Client</button>
+        </div>
+
+        <!-- All integration cards — shown when client selected -->
+        <div id="intPlatformList" style="display:none;">
+
+            <!-- ── EMAIL MARKETING ── -->
+            <div class="cg-int-section">
+                <div class="cg-int-section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    Email Marketing
+                </div>
+
+                <!-- Mailchimp -->
+                <div class="cg-int-card" id="int-mailchimp">
+                    <div class="cg-int-card-header">
+                        <div class="cg-int-logo" style="background:#FFE01B;color:#000;font-weight:900;">M</div>
+                        <div class="cg-int-info">
+                            <strong>Mailchimp</strong>
+                            <span class="cg-int-status" id="mailchimp-status">Not connected</span>
+                        </div>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" id="mailchimp-toggle-btn" onclick="toggleIntegrationForm('mailchimp')">Connect</button>
+                    </div>
+                    <div class="cg-int-how-to">
+                        Go to <strong>Mailchimp → Account → Extras → API keys</strong> → Create a key. Then find your List ID under <strong>Audience → Settings → Audience name and defaults</strong>.
+                    </div>
+                    <div class="cg-int-form" id="mailchimp-form" style="display:none;">
+                        <label>API Key <a href="https://mailchimp.com/help/about-api-keys/" target="_blank" class="cg-int-help">mailchimp.com/help/about-api-keys ↗</a></label>
+                        <input type="password" class="cg-input" id="mailchimp-apikey" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-us1">
+                        <label>Audience / List ID <a href="https://mailchimp.com/help/find-audience-id/" target="_blank" class="cg-int-help">mailchimp.com/help/find-audience-id ↗</a></label>
+                        <input type="text" class="cg-input" id="mailchimp-listid" placeholder="abc123de">
+                        <div class="cg-int-form-actions">
+                            <button type="button" class="cg-btn cg-btn-ghost cg-btn-sm" onclick="toggleIntegrationForm('mailchimp')">Cancel</button>
+                            <button type="button" class="cg-btn cg-btn-primary cg-btn-sm" onclick="saveIntegration('mailchimp')">Save &amp; Test</button>
+                        </div>
+                        <div class="cg-int-test-result" id="mailchimp-result" style="display:none;"></div>
+                    </div>
+                    <div class="cg-int-actions" id="mailchimp-actions" style="display:none;">
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="syncMailchimpAudience()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Sync Audience
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="sendContentAsEmail()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Content
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-ghost cg-int-disconnect" onclick="disconnectIntegration('mailchimp')">Disconnect</button>
+                    </div>
+                    <div class="cg-int-audience-info" id="mailchimp-audience" style="display:none;"></div>
+                </div>
+
+                <!-- Klaviyo -->
+                <div class="cg-int-card" id="int-klaviyo">
+                    <div class="cg-int-card-header">
+                        <div class="cg-int-logo" style="background:#1A1A1A;color:#fff;">K</div>
+                        <div class="cg-int-info">
+                            <strong>Klaviyo</strong>
+                            <span class="cg-int-status" id="klaviyo-status">Not connected</span>
+                        </div>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" id="klaviyo-toggle-btn" onclick="toggleIntegrationForm('klaviyo')">Connect</button>
+                    </div>
+                    <div class="cg-int-how-to">
+                        Go to <strong>Klaviyo → Settings → API Keys</strong> → Create a Private API Key with <em>Full Access</em>. Copy the key starting with <code>pk_</code>.
+                    </div>
+                    <div class="cg-int-form" id="klaviyo-form" style="display:none;">
+                        <label>Private API Key <a href="https://help.klaviyo.com/hc/en-us/articles/115005062267" target="_blank" class="cg-int-help">help.klaviyo.com/api-keys ↗</a></label>
+                        <input type="password" class="cg-input" id="klaviyo-apikey" placeholder="pk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                        <div class="cg-int-form-actions">
+                            <button type="button" class="cg-btn cg-btn-ghost cg-btn-sm" onclick="toggleIntegrationForm('klaviyo')">Cancel</button>
+                            <button type="button" class="cg-btn cg-btn-primary cg-btn-sm" onclick="saveIntegration('klaviyo')">Save &amp; Test</button>
+                        </div>
+                        <div class="cg-int-test-result" id="klaviyo-result" style="display:none;"></div>
+                    </div>
+                    <div class="cg-int-actions" id="klaviyo-actions" style="display:none;">
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="syncKlaviyoLists()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Sync Lists
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-ghost cg-int-disconnect" onclick="disconnectIntegration('klaviyo')">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- SendGrid -->
+                <div class="cg-int-card" id="int-sendgrid">
+                    <div class="cg-int-card-header">
+                        <div class="cg-int-logo" style="background:#1A82E2;color:#fff;">SG</div>
+                        <div class="cg-int-info">
+                            <strong>SendGrid</strong>
+                            <span class="cg-int-status" id="sendgrid-status">Not connected</span>
+                        </div>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" id="sendgrid-toggle-btn" onclick="toggleIntegrationForm('sendgrid')">Connect</button>
+                    </div>
+                    <div class="cg-int-how-to">
+                        Go to <strong>SendGrid → Settings → API Keys → Create API Key</strong>. Select <em>Full Access</em> or at minimum <em>Mail Send</em> + <em>Marketing</em> permissions.
+                    </div>
+                    <div class="cg-int-form" id="sendgrid-form" style="display:none;">
+                        <label>API Key <a href="https://docs.sendgrid.com/ui/account-and-settings/api-keys" target="_blank" class="cg-int-help">docs.sendgrid.com/api-keys ↗</a></label>
+                        <input type="password" class="cg-input" id="sendgrid-apikey" placeholder="SG.xxxxxxxxxxxxxxxxxxxxxxxx">
+                        <label>From Email Address</label>
+                        <input type="email" class="cg-input" id="sendgrid-fromemail" placeholder="hello@yourdomain.com">
+                        <div class="cg-int-form-actions">
+                            <button type="button" class="cg-btn cg-btn-ghost cg-btn-sm" onclick="toggleIntegrationForm('sendgrid')">Cancel</button>
+                            <button type="button" class="cg-btn cg-btn-primary cg-btn-sm" onclick="saveIntegration('sendgrid')">Save &amp; Test</button>
+                        </div>
+                        <div class="cg-int-test-result" id="sendgrid-result" style="display:none;"></div>
+                    </div>
+                    <div class="cg-int-actions" id="sendgrid-actions" style="display:none;">
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="sendViaSendGrid()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Content
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-ghost cg-int-disconnect" onclick="disconnectIntegration('sendgrid')">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- ConvertKit -->
+                <div class="cg-int-card" id="int-convertkit">
+                    <div class="cg-int-card-header">
+                        <div class="cg-int-logo" style="background:#FB6970;color:#fff;">CK</div>
+                        <div class="cg-int-info">
+                            <strong>ConvertKit</strong>
+                            <span class="cg-int-status" id="convertkit-status">Not connected</span>
+                        </div>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" id="convertkit-toggle-btn" onclick="toggleIntegrationForm('convertkit')">Connect</button>
+                    </div>
+                    <div class="cg-int-how-to">
+                        Go to <strong>ConvertKit → Settings → Advanced → API</strong>. Copy your <em>API Key</em> (not the secret). It looks like a long string of letters and numbers.
+                    </div>
+                    <div class="cg-int-form" id="convertkit-form" style="display:none;">
+                        <label>API Key <a href="https://help.convertkit.com/en/articles/2502579-api-key" target="_blank" class="cg-int-help">help.convertkit.com/api-key ↗</a></label>
+                        <input type="password" class="cg-input" id="convertkit-apikey" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                        <div class="cg-int-form-actions">
+                            <button type="button" class="cg-btn cg-btn-ghost cg-btn-sm" onclick="toggleIntegrationForm('convertkit')">Cancel</button>
+                            <button type="button" class="cg-btn cg-btn-primary cg-btn-sm" onclick="saveIntegration('convertkit')">Save &amp; Test</button>
+                        </div>
+                        <div class="cg-int-test-result" id="convertkit-result" style="display:none;"></div>
+                    </div>
+                    <div class="cg-int-actions" id="convertkit-actions" style="display:none;">
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="syncConvertKitSubscribers()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Sync Subscribers
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-ghost cg-int-disconnect" onclick="disconnectIntegration('convertkit')">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── E-COMMERCE ── -->
+            <div class="cg-int-section">
+                <div class="cg-int-section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    E-Commerce
+                </div>
+
+                <!-- Shopify -->
+                <div class="cg-int-card" id="int-shopify">
+                    <div class="cg-int-card-header">
+                        <div class="cg-int-logo" style="background:#96BF48;color:#fff;">SH</div>
+                        <div class="cg-int-info">
+                            <strong>Shopify</strong>
+                            <span class="cg-int-status" id="shopify-status">Not connected</span>
+                        </div>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" id="shopify-toggle-btn" onclick="toggleIntegrationForm('shopify')">Connect</button>
+                    </div>
+                    <div class="cg-int-how-to">
+                        Go to <strong>Shopify Admin → Settings → Apps and sales channels → Develop apps → Create an app</strong>. Under <em>Admin API access scopes</em> enable <code>read_products</code> and <code>read_orders</code>. Install the app, then copy the Admin API access token.
+                    </div>
+                    <div class="cg-int-form" id="shopify-form" style="display:none;">
+                        <label>Store URL <a href="https://help.shopify.com/en/manual/apps/app-types/custom-apps" target="_blank" class="cg-int-help">help.shopify.com/custom-apps ↗</a></label>
+                        <input type="text" class="cg-input" id="shopify-store" placeholder="yourstore.myshopify.com">
+                        <label>Admin API Access Token</label>
+                        <input type="password" class="cg-input" id="shopify-token" placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx">
+                        <div class="cg-int-form-actions">
+                            <button type="button" class="cg-btn cg-btn-ghost cg-btn-sm" onclick="toggleIntegrationForm('shopify')">Cancel</button>
+                            <button type="button" class="cg-btn cg-btn-primary cg-btn-sm" onclick="saveIntegration('shopify')">Save &amp; Test</button>
+                        </div>
+                        <div class="cg-int-test-result" id="shopify-result" style="display:none;"></div>
+                    </div>
+                    <div class="cg-int-actions" id="shopify-actions" style="display:none;">
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="syncShopifyProducts()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Sync Products
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="generateShopifyContent()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate Product Ads
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-ghost cg-int-disconnect" onclick="disconnectIntegration('shopify')">Disconnect</button>
+                    </div>
+                    <div class="cg-int-audience-info" id="shopify-products" style="display:none;"></div>
+                </div>
+            </div>
+
+            <!-- ── PRODUCTIVITY & CMS ── -->
+            <div class="cg-int-section">
+                <div class="cg-int-section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Productivity &amp; CMS
+                </div>
+
+                <!-- Google Sheets -->
+                <div class="cg-int-card" id="int-googlesheets">
+                    <div class="cg-int-card-header">
+                        <div class="cg-int-logo" style="background:#0F9D58;color:#fff;">GS</div>
+                        <div class="cg-int-info">
+                            <strong>Google Sheets</strong>
+                            <span class="cg-int-status" id="googlesheets-status">Not connected</span>
+                        </div>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" id="googlesheets-toggle-btn" onclick="toggleIntegrationForm('googlesheets')">Connect</button>
+                    </div>
+                    <div class="cg-int-how-to">
+                        Go to <strong>Google Cloud Console → APIs &amp; Services → Credentials → Create credentials → API key</strong>. Then enable the <em>Google Sheets API</em> in the library. You also need the Sheet ID from the URL of your spreadsheet: <code>docs.google.com/spreadsheets/d/<strong>[SHEET-ID]</strong>/edit</code>.
+                    </div>
+                    <div class="cg-int-form" id="googlesheets-form" style="display:none;">
+                        <label>API Key <a href="https://console.cloud.google.com/apis/credentials" target="_blank" class="cg-int-help">console.cloud.google.com/apis ↗</a></label>
+                        <input type="password" class="cg-input" id="googlesheets-apikey" placeholder="AIzaSyXXXXXXXXXXXXXXXXXXXXXXXX">
+                        <label>Spreadsheet ID <a href="https://developers.google.com/sheets/api/guides/concepts#spreadsheet_id" target="_blank" class="cg-int-help">How to find ↗</a></label>
+                        <input type="text" class="cg-input" id="googlesheets-sheetid" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms">
+                        <div class="cg-int-form-actions">
+                            <button type="button" class="cg-btn cg-btn-ghost cg-btn-sm" onclick="toggleIntegrationForm('googlesheets')">Cancel</button>
+                            <button type="button" class="cg-btn cg-btn-primary cg-btn-sm" onclick="saveIntegration('googlesheets')">Save &amp; Test</button>
+                        </div>
+                        <div class="cg-int-test-result" id="googlesheets-result" style="display:none;"></div>
+                    </div>
+                    <div class="cg-int-actions" id="googlesheets-actions" style="display:none;">
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="exportToSheets()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export Content
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-ghost cg-int-disconnect" onclick="disconnectIntegration('googlesheets')">Disconnect</button>
+                    </div>
+                </div>
+
+                <!-- Notion -->
+                <div class="cg-int-card" id="int-notion">
+                    <div class="cg-int-card-header">
+                        <div class="cg-int-logo" style="background:#000;color:#fff;">N</div>
+                        <div class="cg-int-info">
+                            <strong>Notion</strong>
+                            <span class="cg-int-status" id="notion-status">Not connected</span>
+                        </div>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" id="notion-toggle-btn" onclick="toggleIntegrationForm('notion')">Connect</button>
+                    </div>
+                    <div class="cg-int-how-to">
+                        Go to <strong>notion.so/my-integrations → New integration</strong>. Give it a name, select your workspace, and copy the <em>Internal Integration Secret</em>. Then in your Notion database, click <strong>⋯ → Connections → Add connection</strong> and select your integration. Copy the database ID from its URL.
+                    </div>
+                    <div class="cg-int-form" id="notion-form" style="display:none;">
+                        <label>Integration Secret <a href="https://www.notion.so/my-integrations" target="_blank" class="cg-int-help">notion.so/my-integrations ↗</a></label>
+                        <input type="password" class="cg-input" id="notion-secret" placeholder="secret_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                        <label>Database ID <a href="https://developers.notion.com/docs/working-with-databases" target="_blank" class="cg-int-help">How to find ↗</a></label>
+                        <input type="text" class="cg-input" id="notion-dbid" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+                        <div class="cg-int-form-actions">
+                            <button type="button" class="cg-btn cg-btn-ghost cg-btn-sm" onclick="toggleIntegrationForm('notion')">Cancel</button>
+                            <button type="button" class="cg-btn cg-btn-primary cg-btn-sm" onclick="saveIntegration('notion')">Save &amp; Test</button>
+                        </div>
+                        <div class="cg-int-test-result" id="notion-result" style="display:none;"></div>
+                    </div>
+                    <div class="cg-int-actions" id="notion-actions" style="display:none;">
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="pushToNotion()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Push Content to Notion
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-ghost cg-int-disconnect" onclick="disconnectIntegration('notion')">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── ANALYTICS ── -->
+            <div class="cg-int-section">
+                <div class="cg-int-section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Analytics
+                </div>
+
+                <!-- Google Analytics 4 -->
+                <div class="cg-int-card" id="int-ga4">
+                    <div class="cg-int-card-header">
+                        <div class="cg-int-logo" style="background:#fff;border:1px solid var(--gray-200);padding:2px;">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="12" width="4" height="10" rx="1" fill="#F4B400"/><rect x="10" y="6" width="4" height="16" rx="1" fill="#4285F4"/><rect x="18" y="2" width="4" height="20" rx="1" fill="#34A853"/></svg>
+                        </div>
+                        <div class="cg-int-info">
+                            <strong>Google Analytics 4</strong>
+                            <span class="cg-int-status" id="ga4-status">Not connected</span>
+                        </div>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" id="ga4-toggle-btn" onclick="toggleIntegrationForm('ga4')">Connect</button>
+                    </div>
+                    <div class="cg-int-how-to">
+                        Uses a <strong>Service Account</strong> — no OAuth login needed. Go to <strong>Google Cloud Console → IAM → Service Accounts → Create</strong>. Grant it <em>Viewer</em> access to your GA4 property. Download the JSON key. Then go to <strong>GA4 → Admin → Property Access Management</strong> and add the service account email as a Viewer. Finally find your <strong>GA4 Property ID</strong> (the number under Admin → Property Settings).
+                    </div>
+                    <div class="cg-int-form" id="ga4-form" style="display:none;">
+                        <label>GA4 Property ID <a href="https://support.google.com/analytics/answer/12270356" target="_blank" class="cg-int-help">How to find ↗</a></label>
+                        <input type="text" class="cg-input" id="ga4-propertyid" placeholder="123456789">
+                        <label>Service Account Client Email <a href="https://console.cloud.google.com/iam-admin/serviceaccounts" target="_blank" class="cg-int-help">console.cloud.google.com ↗</a></label>
+                        <input type="text" class="cg-input" id="ga4-clientemail" placeholder="my-sa@my-project.iam.gserviceaccount.com">
+                        <label>Service Account Private Key <a href="https://cloud.google.com/iam/docs/keys-create-delete" target="_blank" class="cg-int-help">Download JSON key ↗</a></label>
+                        <textarea class="cg-textarea" id="ga4-privatekey" rows="3" placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;Paste the private_key value from your downloaded JSON key file&#10;-----END RSA PRIVATE KEY-----"></textarea>
+                        <p style="font-size:0.75rem;color:var(--gray-400);margin-top:0.25rem;">Your key is stored locally in your browser and never sent anywhere except directly to Google's API.</p>
+                        <div class="cg-int-form-actions">
+                            <button type="button" class="cg-btn cg-btn-ghost cg-btn-sm" onclick="toggleIntegrationForm('ga4')">Cancel</button>
+                            <button type="button" class="cg-btn cg-btn-primary cg-btn-sm" onclick="saveIntegration('ga4')">Save &amp; Test</button>
+                        </div>
+                        <div class="cg-int-test-result" id="ga4-result" style="display:none;"></div>
+                    </div>
+                    <div class="cg-int-actions" id="ga4-actions" style="display:none;">
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="refreshGa4Data()">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Fetch Latest Data
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="switchView('analytics'); closeIntegrations();">
+                            View Analytics
+                        </button>
+                        <button type="button" class="cg-btn cg-btn-sm cg-btn-ghost cg-int-disconnect" onclick="disconnectIntegration('ga4')">Disconnect</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── COMING SOON ── -->
+            <div class="cg-int-section">
+                <div class="cg-int-section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    Coming Soon — Awaiting Platform Approval
+                </div>
+                <div class="cg-int-coming-soon-grid">
+                    <div class="cg-int-coming-card">
+                        <div class="cg-int-logo" style="background:linear-gradient(45deg,#f09433,#dc2743);color:#fff;font-size:0.7rem;">IG</div>
+                        <span>Instagram</span>
+                        <span class="cg-int-coming-why">Meta app review</span>
+                    </div>
+                    <div class="cg-int-coming-card">
+                        <div class="cg-int-logo" style="background:#1877F2;color:#fff;">f</div>
+                        <span>Meta Ads</span>
+                        <span class="cg-int-coming-why">Business verification</span>
+                    </div>
+                    <div class="cg-int-coming-card">
+                        <div class="cg-int-logo" style="background:#4285F4;color:#fff;">G</div>
+                        <span>Google Ads</span>
+                        <span class="cg-int-coming-why">Developer token</span>
+                    </div>
+                    <div class="cg-int-coming-card">
+                        <div class="cg-int-logo" style="background:#0A66C2;color:#fff;font-size:0.7rem;">in</div>
+                        <span>LinkedIn</span>
+                        <span class="cg-int-coming-why">OAuth app review</span>
+                    </div>
+                    <div class="cg-int-coming-card">
+                        <div class="cg-int-logo" style="background:#000;color:#fff;">X</div>
+                        <span>X Ads</span>
+                        <span class="cg-int-coming-why">Developer portal</span>
+                    </div>
+                    <div class="cg-int-coming-card">
+                        <div class="cg-int-logo" style="background:#000;color:#fff;font-size:0.65rem;">TT</div>
+                        <span>TikTok Ads</span>
+                        <span class="cg-int-coming-why">Business review</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="cg-integrations-overlay" id="integrationsOverlay" onclick="closeIntegrations()"></div>
+
+    <!-- ============ ASSET LIBRARY PANEL ============ -->
+    <div class="cg-integrations-panel" id="assetLibraryPanel">
+        <div class="cg-integrations-header">
+            <div>
+                <h2>Asset Library</h2>
+                <p id="assetLibraryClientLabel">Brand assets for this client</p>
+            </div>
+            <button type="button" class="cg-modal-close" onclick="closeAssetLibrary()">&times;</button>
+        </div>
+
+        <!-- Client bar -->
+        <div class="cg-int-client-bar">
+            <div class="cg-int-client-bar-inner" id="assetLibraryClientBar"></div>
+        </div>
+
+        <div id="assetLibraryContent" style="padding:1.25rem 1.75rem;">
+
+            <!-- Asset readiness summary -->
+            <div id="assetReadinessSummary" style="margin-bottom:1.25rem;"></div>
+
+            <!-- Asset type sections -->
+            <div class="cg-asset-lib-section">
+                <div class="cg-asset-lib-section-title">Brand Assets</div>
+                <div class="cg-asset-lib-grid" id="libBrandAssets"></div>
+            </div>
+
+            <div class="cg-asset-lib-section">
+                <div class="cg-asset-lib-section-title">Ad Creatives</div>
+                <div class="cg-asset-lib-grid" id="libAdAssets"></div>
+            </div>
+
+            <div class="cg-asset-lib-section">
+                <div class="cg-asset-lib-section-title">Lifestyle &amp; Stock</div>
+                <p style="font-size:0.8rem;color:var(--gray-400);margin-bottom:0.75rem;">Free stock images saved from the content wizard</p>
+                <div class="cg-asset-lib-grid" id="libStockAssets"></div>
+                <button type="button" class="cg-btn cg-btn-secondary cg-btn-sm" style="margin-top:0.75rem;" onclick="closeAssetLibrary(); switchView('create'); goToStep(4);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Browse stock in wizard
+                </button>
+            </div>
+
+            <!-- Auto-pull from website -->
+            <div class="cg-asset-lib-section" id="libAutoPullSection"></div>
+            <div class="cg-asset-lib-section">
+                <div class="cg-asset-lib-section-title">Upload More Assets</div>
+                <div class="cg-asset-upload-more">
+                    <input type="file" id="libExtraInput" multiple accept="image/*,video/*" style="display:none;" onchange="handleLibraryUpload(event)">
+                    <div class="cg-upload-zone cg-upload-zone-sm" onclick="document.getElementById('libExtraInput').click()">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        <p>Click to upload additional assets</p>
+                        <small>Images, videos, PDFs</small>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <div class="cg-integrations-overlay" id="assetLibraryOverlay" onclick="closeAssetLibrary()"></div>
+
+    <!-- ============ PUBLISH SUCCESS MODAL ============ -->
+
+    <div class="cg-modal" id="publishModal" style="display:none;">
+        <div class="cg-modal-content">
+            <div class="cg-modal-success">
+                <div class="cg-success-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--emerald-500)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </div>
+                <h2>Content Published Successfully!</h2>
+                <p>Your content has been published to all selected channels. The AI ads engine is now optimizing your campaigns.</p>
+                <div class="cg-published-channels" id="publishedChannels">
+                    <!-- Dynamically populated -->
+                </div>
+                <button class="cg-btn cg-btn-primary" onclick="closeModal()">View in Calendar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ ADD CLIENT MODAL ============ -->
+    <!-- Outcome feedback modal -->
+    <div class="cg-outcome-overlay" id="outcomeFeedbackModal" style="display:none;" data-exec-id="">
+        <div class="cg-outcome-card">
+            <div class="cg-outcome-header">
+                <span>You tried this — did it work?</span>
+                <button type="button" class="cg-outcome-dismiss" onclick="dismissOutcomeFeedback()">✕</button>
+            </div>
+            <div class="cg-outcome-action-label">
+                You started <strong id="outcomeFeedbackLabel">this action</strong> in a previous session.
+            </div>
+            <div class="cg-outcome-note">
+                Your answer helps refine future recommendations. It is stored locally only.
+            </div>
+            <div class="cg-outcome-buttons">
+                <button type="button" class="cg-outcome-btn cg-outcome-worked" onclick="recordOutcome('worked')">
+                    👍 Worked
+                </button>
+                <button type="button" class="cg-outcome-btn cg-outcome-unsure" onclick="recordOutcome('unsure')">
+                    😐 Not sure
+                </button>
+                <button type="button" class="cg-outcome-btn cg-outcome-failed" onclick="recordOutcome('failed')">
+                    👎 Didn't work
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="cg-modal" id="addClientModal" style="display:none;">
+        <div class="cg-modal-content cg-modal-large">
+            <div class="cg-modal-header">
+                <h2>Add New Client</h2>
+                <button class="cg-modal-close" onclick="closeAddClientModal()">&times;</button>
+            </div>
+            <div class="cg-campaign-form" id="addClientForm">
+                <div class="cg-form-row">
+                    <div class="cg-form-group">
+                        <label>Client / Brand Name</label>
+                        <input type="text" class="cg-input" id="newClientName" placeholder="e.g. Acme Fitness, Smith & Co">
+                    </div>
+                    <div class="cg-form-group">
+                        <label>Industry / Niche</label>
+                        <input type="text" class="cg-input" id="newClientIndustry" placeholder="e.g. E-commerce, SaaS, Coaching">
+                    </div>
+                </div>
+                <div class="cg-form-group">
+                    <label>Primary Goal <span style="color:#EF4444;font-size:0.75rem;">required — drives all recommendations</span></label>
+                    <div class="cg-chip-select" id="newClientGoal" style="gap:0.5rem;">
+                        <button type="button" class="cg-chip" data-value="first_customers" onclick="selectGoalChip(this)">Get first customers</button>
+                        <button type="button" class="cg-chip" data-value="generate_leads" onclick="selectGoalChip(this)">Generate leads</button>
+                        <button type="button" class="cg-chip" data-value="increase_revenue" onclick="selectGoalChip(this)">Increase revenue</button>
+                        <button type="button" class="cg-chip" data-value="build_audience" onclick="selectGoalChip(this)">Build audience</button>
+                        <button type="button" class="cg-chip" data-value="improve_conversion" onclick="selectGoalChip(this)">Improve conversion</button>
+                    </div>
+                </div>
+                <div class="cg-form-group">
+                    <label>Brand Color</label>
+                    <div class="cg-color-picker">
+                        <button type="button" class="cg-color-swatch active" data-color="#3B82F6" style="background:#3B82F6;" onclick="selectColor(this)"></button>
+                        <button type="button" class="cg-color-swatch" data-color="#10B981" style="background:#10B981;" onclick="selectColor(this)"></button>
+                        <button type="button" class="cg-color-swatch" data-color="#F59E0B" style="background:#F59E0B;" onclick="selectColor(this)"></button>
+                        <button type="button" class="cg-color-swatch" data-color="#EF4444" style="background:#EF4444;" onclick="selectColor(this)"></button>
+                        <button type="button" class="cg-color-swatch" data-color="#8B5CF6" style="background:#8B5CF6;" onclick="selectColor(this)"></button>
+                        <button type="button" class="cg-color-swatch" data-color="#EC4899" style="background:#EC4899;" onclick="selectColor(this)"></button>
+                        <button type="button" class="cg-color-swatch" data-color="#14B8A6" style="background:#14B8A6;" onclick="selectColor(this)"></button>
+                        <button type="button" class="cg-color-swatch" data-color="#F97316" style="background:#F97316;" onclick="selectColor(this)"></button>
+                    </div>
+                </div>
+                <div class="cg-form-group">
+                    <label>Target Audience</label>
+                    <textarea class="cg-textarea" id="newClientAudience" rows="2" placeholder="Describe who this client is trying to reach..."></textarea>
+                </div>
+                <div class="cg-form-group">
+                    <label>Brand Voice / Tone</label>
+                    <div class="cg-chip-select" id="newClientTone">
+                        <button type="button" class="cg-chip" data-value="professional" onclick="this.classList.toggle('active')">Professional</button>
+                        <button type="button" class="cg-chip" data-value="casual" onclick="this.classList.toggle('active')">Casual &amp; Friendly</button>
+                        <button type="button" class="cg-chip" data-value="bold" onclick="this.classList.toggle('active')">Bold &amp; Edgy</button>
+                        <button type="button" class="cg-chip" data-value="inspirational" onclick="this.classList.toggle('active')">Inspirational</button>
+                        <button type="button" class="cg-chip" data-value="educational" onclick="this.classList.toggle('active')">Educational</button>
+                        <button type="button" class="cg-chip" data-value="humorous" onclick="this.classList.toggle('active')">Humorous</button>
+                    </div>
+                </div>
+                <div class="cg-form-group">
+                    <label>Social Channels</label>
+                    <div class="cg-chip-select multi" id="newClientChannels">
+                        <button type="button" class="cg-chip" data-value="instagram" onclick="this.classList.toggle('active')">Instagram</button>
+                        <button type="button" class="cg-chip" data-value="tiktok" onclick="this.classList.toggle('active')">TikTok</button>
+                        <button type="button" class="cg-chip" data-value="facebook" onclick="this.classList.toggle('active')">Facebook</button>
+                        <button type="button" class="cg-chip" data-value="linkedin" onclick="this.classList.toggle('active')">LinkedIn</button>
+                        <button type="button" class="cg-chip" data-value="twitter" onclick="this.classList.toggle('active')">X (Twitter)</button>
+                        <button type="button" class="cg-chip" data-value="youtube" onclick="this.classList.toggle('active')">YouTube</button>
+                        <button type="button" class="cg-chip" data-value="pinterest" onclick="this.classList.toggle('active')">Pinterest</button>
+                        <button type="button" class="cg-chip" data-value="email" onclick="this.classList.toggle('active')">Email</button>
+                    </div>
+                </div>
+                <div class="cg-form-group">
+                    <label>Website URL <span class="cg-optional">(optional)</span></label>
+                    <input type="text" class="cg-input" id="newClientWebsite" placeholder="https://...">
+                </div>
+                <div class="cg-form-group">
+                    <label>Notes <span class="cg-optional">(optional)</span></label>
+                    <textarea class="cg-textarea" id="newClientNotes" rows="2" placeholder="Any additional details, brand guidelines, competitor references..."></textarea>
+                </div>
+
+                <!-- Brand Assets Section -->
+                <div class="cg-form-group">
+                    <label>Brand Assets <span class="cg-optional">(optional — add now or later)</span></label>
+                    <div class="cg-asset-upload-grid">
+
+                        <!-- Logo -->
+                        <div class="cg-asset-slot" id="assetSlot-logo">
+                            <div class="cg-asset-slot-inner" onclick="triggerAssetUpload('logo')">
+                                <input type="file" id="assetInput-logo" accept="image/*" style="display:none;" onchange="handleAssetUpload('logo', event)">
+                                <div class="cg-asset-slot-empty" id="assetPreview-logo">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                    <span>Logo</span>
+                                    <small>PNG or SVG</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hero image -->
+                        <div class="cg-asset-slot" id="assetSlot-hero">
+                            <div class="cg-asset-slot-inner" onclick="triggerAssetUpload('hero')">
+                                <input type="file" id="assetInput-hero" accept="image/*" style="display:none;" onchange="handleAssetUpload('hero', event)">
+                                <div class="cg-asset-slot-empty" id="assetPreview-hero">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                    <span>Hero Image</span>
+                                    <small>Main brand photo</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ad creative 1:1 -->
+                        <div class="cg-asset-slot" id="assetSlot-ad-square">
+                            <div class="cg-asset-slot-inner" onclick="triggerAssetUpload('ad-square')">
+                                <input type="file" id="assetInput-ad-square" accept="image/*,video/*" style="display:none;" onchange="handleAssetUpload('ad-square', event)">
+                                <div class="cg-asset-slot-empty" id="assetPreview-ad-square">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                                    <span>Ad Creative</span>
+                                    <small>1:1 feed format</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ad creative 9:16 -->
+                        <div class="cg-asset-slot" id="assetSlot-ad-story">
+                            <div class="cg-asset-slot-inner" onclick="triggerAssetUpload('ad-story')">
+                                <input type="file" id="assetInput-ad-story" accept="image/*,video/*" style="display:none;" onchange="handleAssetUpload('ad-story', event)">
+                                <div class="cg-asset-slot-empty" id="assetPreview-ad-story">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="7" y="2" width="10" height="20" rx="2"/></svg>
+                                    <span>Story / Reel</span>
+                                    <small>9:16 vertical</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Video -->
+                        <div class="cg-asset-slot" id="assetSlot-video">
+                            <div class="cg-asset-slot-inner" onclick="triggerAssetUpload('video')">
+                                <input type="file" id="assetInput-video" accept="video/*" style="display:none;" onchange="handleAssetUpload('video', event)">
+                                <div class="cg-asset-slot-empty" id="assetPreview-video">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                                    <span>Video</span>
+                                    <small>Brand video / ad</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Headshot -->
+                        <div class="cg-asset-slot" id="assetSlot-headshot">
+                            <div class="cg-asset-slot-inner" onclick="triggerAssetUpload('headshot')">
+                                <input type="file" id="assetInput-headshot" accept="image/*" style="display:none;" onchange="handleAssetUpload('headshot', event)">
+                                <div class="cg-asset-slot-empty" id="assetPreview-headshot">
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                    <span>Headshot</span>
+                                    <small>Founder / team photo</small>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <p class="cg-asset-note">Assets are saved per client and used automatically in the content wizard, growth plan, and ad launcher.</p>
+                </div>
+
+                <div class="cg-modal-actions">
+                    <button class="cg-btn cg-btn-ghost" onclick="closeAddClientModal()">Cancel</button>
+                    <button class="cg-btn cg-btn-primary" onclick="saveNewClient()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        Add Client
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ NEW CAMPAIGN MODAL ============ -->
+    <div class="cg-modal" id="campaignModal" style="display:none;">
+        <div class="cg-modal-content cg-modal-large">
+            <div class="cg-modal-header">
+                <h2>Create New Ad Campaign</h2>
+                <button class="cg-modal-close" onclick="closeCampaignModal()">&times;</button>
+            </div>
+            <div class="cg-campaign-form">
+                <div class="cg-form-group">
+                    <label>Campaign Name</label>
+                    <input type="text" class="cg-input" placeholder="e.g. Spring Tax Season Push">
+                </div>
+                <div class="cg-form-group">
+                    <label>Campaign Objective</label>
+                    <div class="cg-chip-select" id="campaignObjective">
+                        <button class="cg-chip" data-value="traffic">Website Traffic</button>
+                        <button class="cg-chip" data-value="conversions">Conversions</button>
+                        <button class="cg-chip" data-value="leads">Lead Generation</button>
+                        <button class="cg-chip" data-value="awareness">Brand Awareness</button>
+                    </div>
+                </div>
+                <div class="cg-form-row">
+                    <div class="cg-form-group">
+                        <label>Daily Budget</label>
+                        <div class="cg-input-prefix">
+                            <span>&pound;</span>
+                            <input type="number" class="cg-input" value="50" min="5">
+                        </div>
+                    </div>
+                    <div class="cg-form-group">
+                        <label>Duration</label>
+                        <select class="cg-select">
+                            <option>7 days</option>
+                            <option selected>14 days</option>
+                            <option>30 days</option>
+                            <option>Ongoing</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="cg-form-group">
+                    <label>Target Platforms</label>
+                    <div class="cg-chip-select multi" id="campaignPlatforms">
+                        <button class="cg-chip" data-value="google">Google Ads</button>
+                        <button class="cg-chip" data-value="meta">Meta Ads</button>
+                        <button class="cg-chip" data-value="linkedin">LinkedIn Ads</button>
+                        <button class="cg-chip" data-value="x">X Ads</button>
+                        <button class="cg-chip" data-value="tiktok">TikTok Ads</button>
+                    </div>
+                </div>
+                <div class="cg-form-group">
+                    <label>AI Strategy</label>
+                    <div class="cg-ai-strategy-card">
+                        <div class="cg-ai-badge">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            AI Recommended
+                        </div>
+                        <p>Based on your historical data, I recommend a <strong>conversion-optimized campaign</strong> targeting your core audience segments. I'll start with broad targeting and narrow down within 48 hours based on early performance signals. Expected ROAS: <strong>3.8x - 5.2x</strong>.</p>
+                    </div>
+                </div>
+                <div class="cg-modal-actions">
+                    <button class="cg-btn cg-btn-ghost" onclick="closeCampaignModal()">Cancel</button>
+                    <button class="cg-btn cg-btn-primary" onclick="launchCampaign()">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Launch Campaign with AI
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="content-generator.js"></script>
+</body>
+</html>
