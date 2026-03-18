@@ -921,28 +921,65 @@ function renderStockFallback(query, append) {
     var page = stockState.page;
     var baseOffset = (page - 1) * 12;
 
-    // Use source.unsplash.com — real photos, no API key needed
-    setTimeout(function() {
-        if (!append) grid.innerHTML = '';
-        for (var s = 1; s <= 12; s++) {
-            var seed = s + baseOffset;
-            var item = document.createElement('div');
-            item.className = 'cg-stock-item';
-            item.dataset.full = 'https://source.unsplash.com/1600x900/?' + encodeURIComponent(query) + '&sig=' + seed;
-            item.dataset.alt = query + ' photo ' + seed;
-            item.dataset.source = 'Unsplash';
-            item.dataset.author = 'Unsplash';
-            item.onclick = function() { selectStock(this); };
-            item.innerHTML =
-                '<img src="https://source.unsplash.com/400x300/?' + encodeURIComponent(query) + '&sig=' + seed + '" alt="stock" loading="lazy" style="width:100%;height:100%;object-fit:cover;">' +
-                '<div class="cg-stock-overlay">' +
-                    '<span>' + escapeHtml(query) + '</span>' +
-                    '<small>Free · Unsplash</small>' +
-                '</div>';
-            grid.appendChild(item);
-        }
-        if (loadMoreBtn) loadMoreBtn.style.display = 'block';
-    }, 400);
+    // Use Pexels API for real stock photos (free tier, 200 req/month)
+    var PEXELS_KEY = 'clfMNJwmdl9WJvnrpFbh2WFJ1bqjVikAdzdBl1gBEPE';
+    var perPage = 12;
+    var apiUrl = 'https://api.pexels.com/v1/search?query=' + encodeURIComponent(query) + '&per_page=' + perPage + '&page=' + page;
+
+    fetch(apiUrl, { headers: { 'Authorization': PEXELS_KEY } })
+        .then(function(res) {
+            if (!res.ok) throw new Error('Pexels API ' + res.status);
+            return res.json();
+        })
+        .then(function(data) {
+            if (!append) grid.innerHTML = '';
+            var photos = data.photos || [];
+            if (photos.length === 0 && !append) {
+                grid.innerHTML = '<div class="cg-stock-empty-state"><p>No photos found for "' + escapeHtml(query) + '". Try a different search term.</p></div>';
+                if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+                return;
+            }
+            photos.forEach(function(photo) {
+                var item = document.createElement('div');
+                item.className = 'cg-stock-item';
+                item.dataset.full = photo.src.large2x || photo.src.large;
+                item.dataset.alt = photo.alt || query;
+                item.dataset.source = 'Pexels';
+                item.dataset.author = photo.photographer || 'Pexels';
+                item.onclick = function() { selectStock(this); };
+                item.innerHTML =
+                    '<img src="' + (photo.src.medium || photo.src.small) + '" alt="' + escapeHtml(photo.alt || query) + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;">' +
+                    '<div class="cg-stock-overlay">' +
+                        '<span>' + escapeHtml(photo.alt || query) + '</span>' +
+                        '<small>' + escapeHtml(photo.photographer) + ' · Pexels</small>' +
+                    '</div>';
+                grid.appendChild(item);
+            });
+            if (loadMoreBtn) loadMoreBtn.style.display = photos.length >= perPage ? 'block' : 'none';
+        })
+        .catch(function(err) {
+            // Fallback to placeholder grid if API fails
+            if (!append) grid.innerHTML = '';
+            for (var s = 1; s <= 12; s++) {
+                var seed = s + baseOffset;
+                var item = document.createElement('div');
+                item.className = 'cg-stock-item';
+                var picId = ((seed * 37 + query.length * 13) % 900) + 100;
+                item.dataset.full = 'https://picsum.photos/id/' + picId + '/1600/900';
+                item.dataset.alt = query + ' photo ' + seed;
+                item.dataset.source = 'Lorem Picsum';
+                item.dataset.author = 'Lorem Picsum';
+                item.onclick = function() { selectStock(this); };
+                item.innerHTML =
+                    '<img src="https://picsum.photos/id/' + picId + '/400/300" alt="stock" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.style.background=\'var(--gray-200)\'">' +
+                    '<div class="cg-stock-overlay">' +
+                        '<span>' + escapeHtml(query) + '</span>' +
+                        '<small>Free · Lorem Picsum</small>' +
+                    '</div>';
+                grid.appendChild(item);
+            }
+            if (loadMoreBtn) loadMoreBtn.style.display = 'block';
+        });
 }
 
 function switchStockTab(tab, btn) {
@@ -1454,26 +1491,70 @@ function renderAutoPullSection(client) {
     if (!el) return;
     var assets = getClientAssets(client.id);
     var pulled = assets.autoPulled || [];
+    var socialPulled = assets.socialPulled || [];
     var hasWebsite = !!(client.website && client.website.trim().length > 8 && client.website.includes('.'));
+    var hasChannels = !!(client.channels && client.channels.trim().length > 0);
 
-    el.innerHTML =
-        '<div class="cg-autopull-wrap">' +
-            '<div class="cg-autopull-header">' +
-                '<div>' +
-                    '<strong>Auto-import from website</strong>' +
-                    '<span class="cg-autopull-note">Optional. Attempts to pull og:image and visible images from the client\'s website. Not guaranteed to find all assets — review before use.</span>' +
-                '</div>' +
-                (hasWebsite
-                    ? '<button type="button" class="cg-btn cg-btn-secondary cg-btn-sm" onclick="triggerAutoPull()">' +
-                        (pulled.length > 0 ? 'Re-pull from website' : 'Pull from website') +
-                      '</button>'
-                    : '<span style="font-size:0.8rem;color:var(--gray-400);">Add website URL to profile to enable</span>'
-                ) +
-            '</div>' +
-            (pulled.length > 0
-                ? '<p class="cg-autopull-disclaimer">⚠️ ' + pulled.length + ' image' + (pulled.length !== 1 ? 's' : '') + ' auto-imported from website. We may have missed or included irrelevant images — review before use.</p>'
-                : '') +
-        '</div>';
+    var html = '<div class="cg-autopull-wrap">';
+
+    // Website pull
+    html += '<div class="cg-autopull-header">' +
+        '<div>' +
+            '<strong>Auto-import from website</strong>' +
+            '<span class="cg-autopull-note">Attempts to pull og:image and visible images from the homepage. Not guaranteed — review before use.</span>' +
+        '</div>' +
+        (hasWebsite
+            ? '<button type="button" class="cg-btn cg-btn-secondary cg-btn-sm" onclick="triggerAutoPull()">' +
+                (pulled.length > 0 ? 'Re-pull from website' : 'Pull from website') +
+              '</button>'
+            : '<span style="font-size:0.8rem;color:var(--gray-400);">Add website URL to profile to enable</span>'
+        ) +
+    '</div>';
+
+    // Show pulled website images
+    if (pulled.length > 0) {
+        html += '<p class="cg-autopull-disclaimer">' + pulled.length + ' image' + (pulled.length !== 1 ? 's' : '') + ' from website — review before use.</p>';
+        html += '<div class="cg-autopull-grid">';
+        pulled.forEach(function(img, idx) {
+            html += '<div class="cg-autopull-item">' +
+                '<img src="' + escapeHtml(img.url) + '" alt="' + escapeHtml(img.alt || 'Website image') + '" loading="lazy" onerror="this.parentElement.style.display=\'none\'">' +
+                '<div class="cg-autopull-item-label">Website</div>' +
+                '<button type="button" class="cg-asset-slot-remove" onclick="removeAutoPulledAsset(' + idx + ')">&times;</button>' +
+            '</div>';
+        });
+        html += '</div>';
+    }
+
+    // Social pull
+    html += '<div class="cg-autopull-header" style="margin-top:1rem;">' +
+        '<div>' +
+            '<strong>Auto-import from social profiles</strong>' +
+            '<span class="cg-autopull-note">Attempts to pull profile/cover images from social channels. Most platforms block this — screenshots or direct download work better.</span>' +
+        '</div>' +
+        (hasChannels
+            ? '<button type="button" class="cg-btn cg-btn-secondary cg-btn-sm" onclick="triggerSocialPull()">' +
+                (socialPulled.length > 0 ? 'Re-pull from socials' : 'Pull from socials') +
+              '</button>'
+            : '<span style="font-size:0.8rem;color:var(--gray-400);">Add social channels to profile to enable</span>'
+        ) +
+    '</div>';
+
+    // Show pulled social images
+    if (socialPulled.length > 0) {
+        html += '<p class="cg-autopull-disclaimer">' + socialPulled.length + ' image' + (socialPulled.length > 1 ? 's' : '') + ' from social profiles.</p>';
+        html += '<div class="cg-autopull-grid">';
+        socialPulled.forEach(function(img, idx) {
+            html += '<div class="cg-autopull-item">' +
+                '<img src="' + escapeHtml(img.url) + '" alt="' + escapeHtml(img.alt || 'Social image') + '" loading="lazy" onerror="this.parentElement.style.display=\'none\'">' +
+                '<div class="cg-autopull-item-label">' + escapeHtml(img.source || 'Social') + '</div>' +
+                '<button type="button" class="cg-asset-slot-remove" onclick="removeSocialPulledAsset(' + idx + ')">&times;</button>' +
+            '</div>';
+        });
+        html += '</div>';
+    }
+
+    html += '</div>';
+    el.innerHTML = html;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1503,33 +1584,112 @@ function triggerAutoPull() {
     var url = client.website.trim();
     if (!url.startsWith('http')) url = 'https://' + url;
 
-    showToast('Attempting to pull images from ' + url + '...', 'info');
+    showToast('Pulling images from ' + url + '...', 'info');
 
-    // Use a public CORS proxy (allorigins.win) to fetch the page HTML
-    // This is a best-effort approach — will fail on sites with CORS restrictions
-    var proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    // Try multiple CORS proxies in order — each may be down or blocked
+    var proxies = [
+        'https://api.allorigins.win/raw?url=',
+        'https://corsproxy.io/?',
+        'https://api.codetabs.com/v1/proxy?quest='
+    ];
 
-    fetch(proxyUrl, { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined })
-        .then(function(res) {
-            if (!res.ok) throw new Error('HTTP ' + res.status);
-            return res.text();
-        })
-        .then(function(html) {
-            var pulled = extractImagesFromHtml(html, url);
-            if (pulled.length === 0) {
-                showToast('No usable images found on that page', 'info');
+    function tryProxy(idx) {
+        if (idx >= proxies.length) {
+            showToast('Could not access website. Site may block external requests. Upload assets manually.', 'info');
+            return;
+        }
+        var proxyUrl = proxies[idx] + encodeURIComponent(url);
+        fetch(proxyUrl, { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined })
+            .then(function(res) {
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                return res.text();
+            })
+            .then(function(html) {
+                var pulled = extractImagesFromHtml(html, url);
+                if (pulled.length === 0) {
+                    showToast('No usable images found on that page', 'info');
+                    return;
+                }
+                if (!clientAssets[client.id]) clientAssets[client.id] = {};
+                clientAssets[client.id].autoPulled = pulled;
+                saveClientAssets();
+                renderAssetLibrary();
+                showToast(pulled.length + ' image' + (pulled.length !== 1 ? 's' : '') + ' imported — review before use', 'success');
+            })
+            .catch(function() { tryProxy(idx + 1); });
+    }
+    tryProxy(0);
+}
+
+function triggerSocialPull() {
+    var client = getActiveClient();
+    if (!client) { showToast('Select a client first', 'error'); return; }
+
+    var channels = (client.channels || '').split(',').map(function(c){ return c.trim().toLowerCase(); }).filter(Boolean);
+    if (channels.length === 0) { showToast('No social channels set for this client. Edit the client profile first.', 'info'); return; }
+
+    // Build social profile URLs from client name + channels
+    var slug = (client.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '').substring(0, 30);
+    var socialUrls = [];
+    channels.forEach(function(ch) {
+        if (ch === 'instagram') socialUrls.push({ platform: 'Instagram', url: 'https://www.instagram.com/' + slug + '/' });
+        if (ch === 'facebook') socialUrls.push({ platform: 'Facebook', url: 'https://www.facebook.com/' + slug + '/' });
+        if (ch === 'linkedin') socialUrls.push({ platform: 'LinkedIn', url: 'https://www.linkedin.com/company/' + slug + '/' });
+        if (ch === 'tiktok') socialUrls.push({ platform: 'TikTok', url: 'https://www.tiktok.com/@' + slug });
+    });
+
+    if (socialUrls.length === 0) { showToast('No supported social channels found', 'info'); return; }
+
+    showToast('Attempting to pull images from ' + socialUrls.length + ' social profile' + (socialUrls.length > 1 ? 's' : '') + '...', 'info');
+
+    var allPulled = [];
+    var completed = 0;
+
+    socialUrls.forEach(function(social) {
+        var proxies = [
+            'https://api.allorigins.win/raw?url=',
+            'https://corsproxy.io/?'
+        ];
+
+        function tryProxy(idx) {
+            if (idx >= proxies.length) {
+                completed++;
+                if (completed === socialUrls.length) finishSocialPull();
                 return;
             }
-            if (!clientAssets[client.id]) clientAssets[client.id] = {};
-            clientAssets[client.id].autoPulled = pulled;
-            saveClientAssets();
-            renderAssetLibrary();
-            showToast(pulled.length + ' image' + (pulled.length !== 1 ? 's' : '') + ' imported — review before use ✓', 'success');
-        })
-        .catch(function(err) {
-            var reason = err.message && err.message.includes('timeout') ? 'Request timed out.' : 'Site may block external requests.';
-            showToast('Could not pull from website. ' + reason + ' Upload assets manually.', 'info');
-        });
+            fetch(proxies[idx] + encodeURIComponent(social.url), { signal: AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined })
+                .then(function(res) { return res.ok ? res.text() : Promise.reject(); })
+                .then(function(html) {
+                    var pulled = extractImagesFromHtml(html, social.url);
+                    pulled.forEach(function(img) { img.source = social.platform; });
+                    allPulled = allPulled.concat(pulled);
+                    completed++;
+                    if (completed === socialUrls.length) finishSocialPull();
+                })
+                .catch(function() { tryProxy(idx + 1); });
+        }
+        tryProxy(0);
+    });
+
+    function finishSocialPull() {
+        if (allPulled.length === 0) {
+            showToast('Could not pull social images. Most platforms block this — use screenshots or download from each platform directly.', 'info');
+            return;
+        }
+        // Deduplicate
+        var seen = {};
+        allPulled = allPulled.filter(function(p) {
+            if (seen[p.url]) return false;
+            seen[p.url] = true;
+            return true;
+        }).slice(0, 12);
+
+        if (!clientAssets[client.id]) clientAssets[client.id] = {};
+        clientAssets[client.id].socialPulled = allPulled;
+        saveClientAssets();
+        renderAssetLibrary();
+        showToast(allPulled.length + ' image' + (allPulled.length > 1 ? 's' : '') + ' imported from social profiles', 'success');
+    }
 }
 
 function extractImagesFromHtml(html, baseUrl) {
@@ -1597,6 +1757,14 @@ function removeAutoPulledAsset(idx) {
     clientAssets[client.id].autoPulled.splice(idx, 1);
     saveClientAssets(); renderAssetLibrary();
     showToast('Auto-imported image removed', 'info');
+}
+
+function removeSocialPulledAsset(idx) {
+    var client = getActiveClient();
+    if (!client || !clientAssets[client.id] || !clientAssets[client.id].socialPulled) return;
+    clientAssets[client.id].socialPulled.splice(idx, 1);
+    saveClientAssets(); renderAssetLibrary();
+    showToast('Social image removed', 'info');
 }
 
 function removeClientExtraAsset(idx) {
