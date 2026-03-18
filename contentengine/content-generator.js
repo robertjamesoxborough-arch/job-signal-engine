@@ -34,9 +34,9 @@ function showToast(message, type) {
 
 function showResult(el, type, message) {
     if (!el) return;
-    el.style.display = 'block';
-    el.className = 'cg-int-result cg-int-result-' + type;
+    el.className = 'cg-int-test-result ' + type;
     el.textContent = message;
+    el.style.display = 'block';
     setTimeout(function() { el.style.display = 'none'; }, 5000);
 }
 
@@ -78,7 +78,6 @@ const state = {
     selectedTypes: [],
     generatedContent: [],
     uploadedFiles: [],
-    selectedStockMedia: [],
     calendarMonth: new Date(2026, 2), // March 2026
     schedule: 'now'
 };
@@ -2403,13 +2402,6 @@ function saveIntegration(platform) {
 function platformLabel(platform) {
     var labels = { mailchimp:'Mailchimp', klaviyo:'Klaviyo', sendgrid:'SendGrid', convertkit:'ConvertKit', shopify:'Shopify', googlesheets:'Google Sheets', notion:'Notion', ga4:'Google Analytics 4' };
     return labels[platform] || platform;
-}
-
-function showResult(el, type, message) {
-    if (!el) return;
-    el.className = 'cg-int-test-result ' + type;
-    el.textContent = message;
-    el.style.display = 'block';
 }
 
 function disconnectIntegration(platform) {

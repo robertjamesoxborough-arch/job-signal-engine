@@ -3948,25 +3948,6 @@
     margin: 0;
 }
 
-/* ============ INTEGRATION RESULT ============ */
-.cg-int-result {
-    display: none;
-    padding: 0.5rem 0.75rem;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    margin-top: 0.5rem;
-}
-.cg-int-result-success {
-    background: #ECFDF5;
-    border: 1px solid #6EE7B7;
-    color: #065F46;
-}
-.cg-int-result-error {
-    background: #FEF2F2;
-    border: 1px solid #FCA5A5;
-    color: #7F1D1D;
-}
-
 /* ============ ANALYTICS CARDS ============ */
 .cg-analytics-card {
     background: white;
