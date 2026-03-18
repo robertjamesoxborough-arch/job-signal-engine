@@ -40,6 +40,37 @@ function showResult(el, type, message) {
     setTimeout(function() { el.style.display = 'none'; }, 5000);
 }
 
+// Extract a short audience label from a potentially long audience description
+// e.g. "Eye Club targets style-conscious, design-aware individuals aged 25-55..."
+// becomes "style-conscious individuals aged 25-55"
+function audienceShort(audienceText) {
+    if (!audienceText) return 'your ideal customers';
+    // If it's already short (under 80 chars), use as-is
+    if (audienceText.length <= 80) return audienceText;
+    // Try to grab first sentence or line
+    var firstLine = audienceText.split(/[\.\n]/)[0].trim();
+    if (firstLine.length <= 80 && firstLine.length > 10) return firstLine;
+    // Otherwise take first 80 chars and cut at last space
+    var short = audienceText.substring(0, 80);
+    var lastSpace = short.lastIndexOf(' ');
+    if (lastSpace > 30) short = short.substring(0, lastSpace);
+    return short;
+}
+
+// Extract key selling points from audience/notes text for use in ad copy
+function extractSellingContext(client, siteData) {
+    var points = [];
+    if (siteData && siteData.description) points.push(siteData.description);
+    if (siteData && siteData.tagline) points.push(siteData.tagline);
+    if (client && client.notes) points.push(client.notes);
+    // Get product names for context
+    if (siteData && siteData.products && siteData.products.length > 0) {
+        var prodNames = siteData.products.slice(0, 5).map(function(p) { return p.name; }).join(', ');
+        points.push('Products: ' + prodNames);
+    }
+    return points.join(' | ');
+}
+
 function renderAnalytics() {
     var client = getActiveClient();
     if (!client) return;
@@ -534,6 +565,17 @@ function generateContent() {
     const goal = state.selectedGoal || 'engagement';
     const types = state.selectedTypes.length > 0 ? state.selectedTypes : ['post', 'carousel', 'reel'];
 
+    // Auto-scrape product page URL if provided and client has no products yet
+    var ppUrlEl = document.getElementById('productPageUrl');
+    var ppUrl = ppUrlEl ? ppUrlEl.value.trim() : '';
+    if (ppUrl) {
+        var client = getActiveClient();
+        var needsScrape = !client || !client.siteData || !client.siteData.products || client.siteData.products.length === 0;
+        if (needsScrape) {
+            scrapeProductPage(ppUrl);
+        }
+    }
+
     // Show loading
     const loading = document.getElementById('aiLoading');
     const contentList = document.getElementById('contentList');
@@ -588,6 +630,10 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     const clientNotes = client ? (client.notes || '') : '';
     var refEl = document.getElementById('contentReference');
     const reference = refEl ? refEl.value || '' : '';
+    var spEl = document.getElementById('sellingPoints');
+    var sellingPoints = spEl ? spEl.value || '' : '';
+    var ppEl = document.getElementById('productPageUrl');
+    var productPageUrl = ppEl ? ppEl.value || '' : '';
 
     // Get scraped website data (products, description, etc.)
     var siteData = (client && client.siteData) ? client.siteData : { products: [], description: '', tagline: '', prices: [], categories: [], links: [] };
@@ -621,6 +667,18 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     // Build brand context line from site description
     var brandContext = siteDesc ? siteDesc : (brand + ' — ' + industry);
 
+    // Short audience label for use in headlines (not the raw brief)
+    var audShort = audienceShort(audience);
+    // Full audience only used in targeting sections
+    var audFull = audience;
+
+    // Selling points bullet list for ad copy
+    var uspLine = '';
+    if (sellingPoints) {
+        var points = sellingPoints.split(/[,\n]/).map(function(s){ return s.trim(); }).filter(Boolean).slice(0, 4);
+        uspLine = points.map(function(p){ return '• ' + p; }).join('\n');
+    }
+
     // Build dynamic hashtags based on brand/industry
     const brandTag = '#' + brand.replace(/[^a-zA-Z0-9]/g, '');
     const industryTag = '#' + industry.replace(/[^a-zA-Z0-9]/g, '');
@@ -642,19 +700,19 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
         post: hasProducts ? [
             {
                 title: 'Product Spotlight — ' + prod(0),
-                text: 'Meet ' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '.\n\n' + (prodDesc(0) || brandContext) + '\n\nThis is one of our bestsellers and here\'s why ' + audience + ' love it:\n\n• Designed for real everyday use\n• Quality you can see and feel\n• Perfect for anyone who values ' + industry.toLowerCase() + '\n\nTap the link in bio to shop ' + prod(0) + ' now.' + (prodImg(0) ? '\n\n[USE IMAGE: ' + prodImg(0) + ']' : ''),
+                text: 'Meet ' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '.\n\n' + (prodDesc(0) || brandContext) + '\n\nThis is one of our bestsellers and here\'s why people love it:\n\n• Designed for real everyday use\n• Quality you can see and feel\n• Perfect for anyone who values ' + industry.toLowerCase() + '\n\nTap the link in bio to shop ' + prod(0) + ' now.' + (prodImg(0) ? '\n\n[USE IMAGE: ' + prodImg(0) + ']' : ''),
                 hashtags: baseHashtags + ' #ShopNow' + productTags,
                 suggestedImage: prodImg(0)
             },
             {
                 title: 'Product In Action — ' + prod(1),
-                text: 'POV: You just got your ' + prod(1) + ' from ' + brand + '.\n\n' + (prodDesc(1) || 'This is what quality ' + industry.toLowerCase() + ' looks like.') + '\n\nWe designed this for ' + audience + ' who want the best — not just another option.\n\nSee it for yourself. Link in bio.',
+                text: 'POV: You just got your ' + prod(1) + ' from ' + brand + '.\n\n' + (prodDesc(1) || 'This is what quality ' + industry.toLowerCase() + ' looks like.') + '\n\nWe designed this for people who want the best — not just another option.\n\nSee it for yourself. Link in bio.',
                 hashtags: baseHashtags + ' #NewArrival' + productTags,
                 suggestedImage: prodImg(1)
             },
             {
                 title: 'Why We Made ' + prod(2),
-                text: 'Every product tells a story.\n\n' + prod(2) + ' was created because ' + audience + ' deserved something better in ' + industry.toLowerCase() + '.\n\n' + (prodDesc(2) || 'Thoughtfully designed. Built to last. Made for you.') + '\n\nThis isn\'t just another ' + industry.toLowerCase() + ' product. It\'s what happens when you obsess over the details.\n\n' + (prodPrice(2) ? 'Starting at ' + prodPrice(2) + '. ' : '') + 'Shop now — link in bio.',
+                text: 'Every product tells a story.\n\n' + prod(2) + ' was created because you deserved something better in ' + industry.toLowerCase() + '.\n\n' + (prodDesc(2) || 'Thoughtfully designed. Built to last. Made for you.') + '\n\nThis isn\'t just another ' + industry.toLowerCase() + ' product. It\'s what happens when you obsess over the details.\n\n' + (prodPrice(2) ? 'Starting at ' + prodPrice(2) + '. ' : '') + 'Shop now — link in bio.',
                 hashtags: baseHashtags + ' #BrandStory #QualityMatters',
                 suggestedImage: prodImg(2)
             },
@@ -666,14 +724,14 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             },
             {
                 title: 'Just Dropped — ' + prod(3),
-                text: 'NEW from ' + brand + '.\n\n' + prod(3) + (prodPrice(3) ? ' — ' + prodPrice(3) : '') + '\n\n' + (prodDesc(3) || 'Designed for ' + audience + ' who know what they want.') + '\n\nLimited stock. Don\'t sleep on this one.\n\nShop now — link in bio.',
+                text: 'NEW from ' + brand + '.\n\n' + prod(3) + (prodPrice(3) ? ' — ' + prodPrice(3) : '') + '\n\n' + (prodDesc(3) || 'Designed for people who know what they want.') + '\n\nLimited stock. Don\'t sleep on this one.\n\nShop now — link in bio.',
                 hashtags: baseHashtags + ' #NewDrop #JustLanded' + productTags,
                 suggestedImage: prodImg(3)
             }
         ] : [
             {
                 title: 'Value Bomb Post',
-                text: 'Most ' + audience + ' are making this mistake.\n\nHere are 3 things you can do TODAY to get better results with ' + industry + ':\n\n1. Audit what you\'re currently doing\n2. Identify the biggest gap in your strategy\n3. Take one focused action this week\n\nSmall changes = massive results over time.\n\nSave this post. Come back to it. Thank me later.',
+                text: 'Most people in ' + industry + ' are making this mistake.\n\nHere are 3 things you can do TODAY to get better results with ' + industry + ':\n\n1. Audit what you\'re currently doing\n2. Identify the biggest gap in your strategy\n3. Take one focused action this week\n\nSmall changes = massive results over time.\n\nSave this post. Come back to it. Thank me later.',
                 hashtags: baseHashtags + ' #ValuePost #Tips'
             },
             {
@@ -683,12 +741,12 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             },
             {
                 title: 'Engagement Hook',
-                text: 'Hot take for ' + audience + ':\n\nMost people in ' + industry + ' are overcomplicating things.\n\nThe truth? The simplest strategy executed consistently will beat a complex one every single time.\n\nAgree or disagree? Tell me why in the comments.',
+                text: 'Hot take for ' + industry + ' lovers:\n\nMost people in ' + industry + ' are overcomplicating things.\n\nThe truth? The simplest strategy executed consistently will beat a complex one every single time.\n\nAgree or disagree? Tell me why in the comments.',
                 hashtags: baseHashtags + ' #HotTake #LetsTalk'
             },
             {
                 title: 'Social Proof Post',
-                text: '"Working with ' + brand + ' completely transformed our approach."\n\nThat\'s what our clients tell us.\n\nNot because we have some secret formula. But because we focus on what actually works for ' + audience + '.\n\nResults speak louder than promises.\n\nLink in bio to see how we can help you too.',
+                text: '"Working with ' + brand + ' completely transformed our approach."\n\nThat\'s what our clients tell us.\n\nNot because we have some secret formula. But because we focus on what actually works.\n\nResults speak louder than promises.\n\nLink in bio to see how we can help you too.',
                 hashtags: baseHashtags + ' #ClientResults #Testimonial #RealResults'
             },
             {
@@ -700,7 +758,7 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
         story: hasProducts ? [
             {
                 title: 'Product Quick-Look Story',
-                text: 'SWIPE UP to shop ' + prod(0) + ' ' + (prodPrice(0) ? '— ' + prodPrice(0) : '') + '\n\n' + (prodDesc(0) ? prodDesc(0).substring(0, 80) + '...' : 'From ' + brand + ' — designed for ' + audience + '.') + '\n\n[USE PRODUCT IMAGE]',
+                text: 'SWIPE UP to shop ' + prod(0) + ' ' + (prodPrice(0) ? '— ' + prodPrice(0) : '') + '\n\n' + (prodDesc(0) ? prodDesc(0).substring(0, 80) + '...' : 'From ' + brand + ' — designed for you.') + '\n\n[USE PRODUCT IMAGE]',
                 hashtags: '',
                 suggestedImage: prodImg(0)
             },
@@ -712,7 +770,7 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
         ] : [
             {
                 title: 'Quick Tip Story',
-                text: 'Quick tip for ' + audience + ':\n\nThe #1 thing that will move the needle for your ' + industry + ' strategy this week?\n\nFocus on ONE goal. Not five. ONE.\n\nSwipe up to learn our full framework.',
+                text: 'Quick tip for ' + industry + ' enthusiasts:\n\nThe #1 thing that will move the needle for your ' + industry + ' strategy this week?\n\nFocus on ONE goal. Not five. ONE.\n\nSwipe up to learn our full framework.',
                 hashtags: ''
             },
             {
@@ -737,7 +795,7 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
         ] : [
             {
                 title: 'Hook Reel Script',
-                text: 'HOOK: "If you\'re a ' + audience.split(' ')[0] + ' in ' + industry + ', stop scrolling"\n\nSETUP: Quick cuts showing the problem your audience faces\n\nREVEAL: "Here\'s what the top 1% do differently..."\n\nVALUE: Share 1 actionable tip\n\nCTA: "Follow ' + brand + ' for more"\n\nAudio: Trending sound\nDuration: 15-30s\nCaption: This is the game changer nobody talks about...',
+                text: 'HOOK: "If you care about ' + industry + ', stop scrolling"\n\nSETUP: Quick cuts showing the problem your audience faces\n\nREVEAL: "Here\'s what the top 1% do differently..."\n\nVALUE: Share 1 actionable tip\n\nCTA: "Follow ' + brand + ' for more"\n\nAudio: Trending sound\nDuration: 15-30s\nCaption: This is the game changer nobody talks about...',
                 hashtags: baseHashtags + ' #Reels #' + industry.replace(/[^a-zA-Z0-9]/g, '') + ' #Tips'
             },
             {
@@ -757,7 +815,7 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
         ] : [
             {
                 title: 'Educational Carousel',
-                text: 'Slide 1: "5 ' + industry + ' Strategies That Actually Work in 2026"\n\nSlide 2: "1. Know Your Audience — Research deeply before creating anything. What keeps ' + audience + ' up at night?"\n\nSlide 3: "2. Content First — Lead with value, not sales. Give before you ask."\n\nSlide 4: "3. Platform Native — What works on Instagram won\'t work on LinkedIn. Tailor everything."\n\nSlide 5: "4. Data-Driven — Track what resonates. Double down on winners. Kill what doesn\'t work."\n\nSlide 6: "5. Consistency > Perfection — Showing up regularly beats being perfect occasionally."\n\nSlide 7: "Save this carousel and start implementing TODAY"\n\nDesign: Clean, bold typography on gradient backgrounds',
+                text: 'Slide 1: "5 ' + industry + ' Strategies That Actually Work in 2026"\n\nSlide 2: "1. Know Your Audience — Research deeply before creating anything. What keeps your audience up at night?"\n\nSlide 3: "2. Content First — Lead with value, not sales. Give before you ask."\n\nSlide 4: "3. Platform Native — What works on Instagram won\'t work on LinkedIn. Tailor everything."\n\nSlide 5: "4. Data-Driven — Track what resonates. Double down on winners. Kill what doesn\'t work."\n\nSlide 6: "5. Consistency > Perfection — Showing up regularly beats being perfect occasionally."\n\nSlide 7: "Save this carousel and start implementing TODAY"\n\nDesign: Clean, bold typography on gradient backgrounds',
                 hashtags: baseHashtags + ' #CarouselPost #Strategy #' + industry.replace(/[^a-zA-Z0-9]/g, '')
             }
         ],
@@ -765,8 +823,8 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             {
                 title: 'Twitter/X Thread',
                 text: hasProducts
-                    ? 'THREAD: Why ' + audience + ' are switching to ' + brand + '\n\n1/ ' + brandContext + '\n\n2/ Our bestseller? ' + prod(0) + '.' + (prodDesc(0) ? ' ' + prodDesc(0).substring(0, 120) : '') + '\n\n3/ But it\'s not just one product. ' + (products.length > 1 ? 'We also make ' + products.slice(1, 4).map(function(p){return p.name;}).join(', ') + '.' : 'We\'re building an entire range for ' + audience + '.') + '\n\n4/ What makes ' + brand + ' different? We obsess over quality. Every detail matters.\n\n5/ Don\'t take our word for it — see what customers are saying. Link in bio.\n\nRepost if you think ' + audience + ' need to see this.'
-                    : 'THREAD: The ' + industry + ' playbook that ' + audience + ' need to know about\n\n1/ Most people in ' + industry + ' are doing the same thing everyone else is doing. That\'s why they get average results.\n\nHere\'s how to break out of the pack:\n\n2/ Step 1: Define your unique angle.\n\nWhat can YOU say about ' + industry + ' that nobody else is saying? Your experience, your perspective, your story.\n\nThat\'s your competitive advantage.\n\n3/ Step 2: Pick ONE platform and dominate it.\n\nDon\'t spread yourself thin across 7 platforms. Master one first, then expand.\n\n4/ Step 3: Create a content engine.\n\nOne long-form piece per week, repurposed into 5-10 shorter pieces across platforms.\n\nWork smarter, not harder.\n\n5/ Step 4: Engage more than you broadcast.\n\nComment on posts. Reply to DMs. Build real relationships.\n\nThe algorithm rewards genuine engagement.\n\n6/ If you found this valuable, follow ' + brand + ' for more insights on ' + industry + '.\n\nRepost to help someone else who needs to see this.',
+                    ? 'THREAD: Why people are switching to ' + brand + '\n\n1/ ' + brandContext + '\n\n2/ Our bestseller? ' + prod(0) + '.' + (prodDesc(0) ? ' ' + prodDesc(0).substring(0, 120) : '') + '\n\n3/ But it\'s not just one product. ' + (products.length > 1 ? 'We also make ' + products.slice(1, 4).map(function(p){return p.name;}).join(', ') + '.' : 'We\'re building an entire range for you.') + '\n\n4/ What makes ' + brand + ' different? We obsess over quality. Every detail matters.\n\n5/ Don\'t take our word for it — see what customers are saying. Link in bio.\n\nRepost if you think this needs to be seen.'
+                    : 'THREAD: The ' + industry + ' playbook you need to know about\n\n1/ Most people in ' + industry + ' are doing the same thing everyone else is doing. That\'s why they get average results.\n\nHere\'s how to break out of the pack:\n\n2/ Step 1: Define your unique angle.\n\nWhat can YOU say about ' + industry + ' that nobody else is saying? Your experience, your perspective, your story.\n\nThat\'s your competitive advantage.\n\n3/ Step 2: Pick ONE platform and dominate it.\n\nDon\'t spread yourself thin across 7 platforms. Master one first, then expand.\n\n4/ Step 3: Create a content engine.\n\nOne long-form piece per week, repurposed into 5-10 shorter pieces across platforms.\n\nWork smarter, not harder.\n\n5/ Step 4: Engage more than you broadcast.\n\nComment on posts. Reply to DMs. Build real relationships.\n\nThe algorithm rewards genuine engagement.\n\n6/ If you found this valuable, follow ' + brand + ' for more insights on ' + industry + '.\n\nRepost to help someone else who needs to see this.',
                 hashtags: ''
             }
         ],
@@ -774,27 +832,39 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             {
                 title: hasProducts ? 'Product Guide — ' + brand : 'Long-Form Article',
                 text: hasProducts
-                    ? '# The Complete ' + brand + ' Guide: ' + industry + ' for ' + audience + '\n\n## About ' + brand + '\n' + brandContext + '\n\n## Our Products\n' + products.slice(0, 8).map(function(p) { return '### ' + p.name + (p.price ? ' — ' + p.price : '') + '\n' + (p.description || 'A standout piece from our collection.'); }).join('\n\n') + '\n\n## Why ' + audience + ' Choose ' + brand + '\n[Customer testimonials and social proof]\n\n## Where to Buy\nShop the full collection at ' + (client && client.website ? client.website : 'our website') + '\n\nSEO keywords: ' + brand + ', ' + industry + ', ' + products.slice(0, 3).map(function(p){return p.name;}).join(', ')
-                    : '# The Ultimate ' + industry + ' Guide for ' + audience + ' in 2026\n\n## Introduction\nThe landscape of ' + industry + ' is changing fast. What worked last year might not work today. In this comprehensive guide, we\'ll cover everything ' + audience + ' need to know to stay ahead.\n\n## Section 1: The Current State of ' + industry + '\n[Analyze trends, challenges, and opportunities in the industry]\n\n## Section 2: Building Your Strategy\n[Step-by-step framework tailored to your audience]\n\n## Section 3: Execution Playbook\n[Practical tactics, tools, and timelines]\n\n## Section 4: Measuring Success\n[KPIs, metrics, and benchmarks that matter]\n\n## Conclusion\nThe best time to refine your ' + industry + ' strategy was yesterday. The second best time is today.\n\nWord count target: 2,000-3,000 words\nSEO keywords: ' + industry + ', ' + audience + ', strategy, guide, 2026',
+                    ? '# The Complete ' + brand + ' Guide: ' + industry + ' — Your Complete Guide\n\n## About ' + brand + '\n' + brandContext + '\n\n## Our Products\n' + products.slice(0, 8).map(function(p) { return '### ' + p.name + (p.price ? ' — ' + p.price : '') + '\n' + (p.description || 'A standout piece from our collection.'); }).join('\n\n') + '\n\n## Why Customers Choose ' + brand + '\n[Customer testimonials and social proof]\n\n## Where to Buy\nShop the full collection at ' + (client && client.website ? client.website : 'our website') + '\n\nSEO keywords: ' + brand + ', ' + industry + ', ' + products.slice(0, 3).map(function(p){return p.name;}).join(', ')
+                    : '# The Ultimate ' + industry + ' Guide for 2026\n\n## Introduction\nThe landscape of ' + industry + ' is changing fast. What worked last year might not work today. In this comprehensive guide, we\'ll cover everything you need to know to stay ahead.\n\n## Section 1: The Current State of ' + industry + '\n[Analyze trends, challenges, and opportunities in the industry]\n\n## Section 2: Building Your Strategy\n[Step-by-step framework tailored to your audience]\n\n## Section 3: Execution Playbook\n[Practical tactics, tools, and timelines]\n\n## Section 4: Measuring Success\n[KPIs, metrics, and benchmarks that matter]\n\n## Conclusion\nThe best time to refine your ' + industry + ' strategy was yesterday. The second best time is today.\n\nWord count target: 2,000-3,000 words\nSEO keywords: ' + industry + ', ' + audShort + ', strategy, guide, 2026',
                 hashtags: ''
             }
         ],
         ad: hasProducts ? [
             {
                 title: 'Product Ad — ' + prod(0),
-                text: 'AD CREATIVE\n\nHeadline: "' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '"\n\nPrimary text: "' + (prodDesc(0) || brandContext) + ' Designed for ' + audience + ' who demand the best. Shop now at ' + brand + '."\n\nCTA: Shop Now\n\nTarget: ' + audience + '\nPlacement: Feed, Stories, Reels\n\n[USE IMAGE: ' + (prodImg(0) || 'Product shot of ' + prod(0)) + ']\n\nVariant B Headline: "' + audience + ' — meet your new favourite ' + industry.toLowerCase() + '"\nVariant C Headline: "' + prod(0) + '. Finally, ' + industry.toLowerCase() + ' done right."',
+                text: 'AD CREATIVE\n\nHeadline: "' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '"\n\nPrimary text: "' + (prodDesc(0) || brandContext) + '\n\n' + (uspLine ? uspLine + '\n\n' : '') + 'Shop now at ' + brand + '."\n\nCTA: Shop Now\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\n\n[USE IMAGE: ' + (prodImg(0) || 'Product shot of ' + prod(0)) + ']\n\nVariant B Headline: "Meet your new favourite ' + industry.toLowerCase() + ' — ' + prod(0) + '"\nVariant C Headline: "' + prod(0) + '. Finally, ' + industry.toLowerCase() + ' done right."',
                 hashtags: '',
                 suggestedImage: prodImg(0)
             },
             {
                 title: 'Collection Ad — ' + brand,
-                text: 'AD CREATIVE\n\nHeadline: "Shop ' + brand + ' — ' + industry + ' for ' + audience + '"\n\nPrimary text: "' + brandContext + ' Featuring: ' + products.slice(0, 3).map(function(p){return p.name;}).join(', ') + (products.length > 3 ? ' and more' : '') + '. Free shipping on your first order."\n\nCTA: Shop Now\n\nTarget: ' + audience + '\nPlacement: Feed, Stories, Reels\nFormat: Carousel ad showing multiple products\n\nVariant B: Dynamic product ad pulling from catalogue',
-                hashtags: ''
+                text: 'AD CREATIVE\n\nHeadline: "Shop ' + brand + ' — ' + industry + ' You\'ll Love"\n\nPrimary text: "' + brandContext + '\n\nFeaturing: ' + products.slice(0, 3).map(function(p){return p.name + (p.price ? ' (' + p.price + ')' : '');}).join(', ') + (products.length > 3 ? ' and more' : '') + '.\n\nFree shipping on your first order."\n\nCTA: Shop Now\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\nFormat: Carousel ad — one product per card with price\n\n' + products.slice(0, 4).map(function(p, i){ return 'Card ' + (i+1) + ': ' + p.name + (p.price ? ' — ' + p.price : '') + (p.image ? '\n  [IMAGE: ' + p.image + ']' : ''); }).join('\n') + '\n\nVariant B: Dynamic product ad pulling from catalogue',
+                hashtags: '',
+                suggestedImage: prodImg(0)
+            },
+            {
+                title: 'Bestseller Ad — ' + prod(0),
+                text: 'AD CREATIVE\n\nHeadline: "Our #1 Bestseller — ' + prod(0) + '"\n\nPrimary text: "See why everyone\'s talking about ' + prod(0) + '.\n\n' + (prodDesc(0) || 'Premium ' + industry.toLowerCase() + ' from ' + brand + '.') + (prodPrice(0) ? '\n\n' + prodPrice(0) + ' — shop now before it sells out.' : '\n\nShop now before it sells out.') + '"\n\nCTA: Shop Now\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\n\n[USE IMAGE: ' + (prodImg(0) || 'Lifestyle shot featuring ' + prod(0)) + ']\n\nVariant B Headline: "Don\'t miss ' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '"\nVariant C Headline: "' + brand + ' — ' + prod(0) + ' is back in stock"',
+                hashtags: '',
+                suggestedImage: prodImg(0)
             }
         ] : [
             {
                 title: 'High-Converting Ad',
-                text: 'AD CREATIVE\n\nHeadline: "' + audience + ': Here\'s what you\'re missing about ' + industry + '"\n\nPrimary text: "' + brand + ' helps ' + audience + ' get better results with ' + industry + '. Join hundreds of clients who\'ve transformed their approach. See how we can help you too."\n\nCTA: Learn More\n\nTarget: ' + audience + '\nPlacement: Feed, Stories, Reels\n\nVariant B Headline: "The ' + industry + ' strategy ' + audience + ' are switching to"\nVariant C Headline: "Stop guessing. Start growing with ' + brand + '"',
+                text: 'AD CREATIVE\n\nHeadline: "Discover ' + brand + ' — ' + industry + ' That Delivers"\n\nPrimary text: "' + brandContext + '\n\nWhether you\'re looking for quality, style, or results — ' + brand + ' has you covered. Join hundreds of happy customers who\'ve made the switch.\n\nSee what we can do for you."\n\nCTA: Learn More\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\n\nVariant B Headline: "Why people are choosing ' + brand + ' for ' + industry.toLowerCase() + '"\nVariant C Headline: "Stop guessing. Start growing with ' + brand + '"',
+                hashtags: ''
+            },
+            {
+                title: 'Brand Introduction Ad',
+                text: 'AD CREATIVE\n\nHeadline: "' + brand + ' — ' + (siteData.tagline || industry) + '"\n\nPrimary text: "' + (siteDesc || 'We\'re ' + brand + ', and we specialise in ' + industry.toLowerCase() + '.') + '\n\nWhat sets us apart?\n• Quality-first approach\n• Designed with you in mind\n• Trusted by customers who care about ' + industry.toLowerCase() + '\n\nVisit us and see the difference."\n\nCTA: Learn More\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\n\nVariant B Headline: "' + brand + ' — made for people who care about ' + industry.toLowerCase() + '"\nVariant C Headline: "The ' + industry.toLowerCase() + ' brand people keep coming back to"',
                 hashtags: ''
             }
         ]
@@ -947,6 +1017,7 @@ function regenerateOne(id) {
         const audience = document.getElementById('targetAudience')?.value || (client ? client.audience : 'your audience');
         const industry = client ? (client.industry || brand) : brand;
         const goal = state.selectedGoal || 'engagement';
+        const audLabel = audienceShort(audience);
 
         const brandTag = '#' + brand.replace(/[^a-zA-Z0-9]/g, '');
         const industryTag = '#' + industry.replace(/[^a-zA-Z0-9]/g, '');
@@ -962,17 +1033,17 @@ function regenerateOne(id) {
 
         const regenPool = {
             post: [
-                { title: 'The Contrarian Take', text: 'Everyone in ' + industry + ' is saying the same thing.\n\nHere\'s what they\'re not telling you:\n\nThe conventional wisdom is wrong. Or at least incomplete.\n\nThe ' + audience + ' who are winning right now? They\'re doing the opposite of what the "experts" recommend.\n\nWant to know what that is? Drop a 🙋 below and I\'ll share the full breakdown.', hashtags: baseHashtags + ' #ContraryView #RealTalk' },
-                { title: 'The Quick Win', text: '5-minute task that will change your ' + industry + ' results:\n\n✅ Open your last 5 pieces of content\n✅ Find the one with the best engagement\n✅ Ask yourself WHY it worked\n✅ Reverse-engineer it\n✅ Create 3 variations this week\n\nThat\'s it. No complex strategy. Just intentional repetition of what works.\n\nSave this. Do it today.', hashtags: baseHashtags + ' #QuickWin #ProductivityTip' },
-                { title: 'Story Post', text: 'Six months ago I was struggling with ' + industry + '.\n\nI tried everything. Nothing worked.\n\nThen I discovered one thing that changed everything for me.\n\nI stopped trying to be everywhere and focused on being exceptional somewhere.\n\nResult? Everything changed for the ' + audience + ' we work with.\n\nSometimes less really is more.', hashtags: baseHashtags + ' #StoryTime #JourneyPost' },
-                { title: 'Data-Driven Post', text: 'After analysing 100+ campaigns in ' + industry + ':\n\nTop 10% performers all do these 4 things:\n\n📊 They track ONE key metric obsessively\n🎯 They know exactly who their ' + audience + ' is\n⚡ They ship fast and iterate faster\n🔁 They repurpose everything\n\nBottom 90%? They do none of these.\n\nWhich camp are you in?', hashtags: baseHashtags + ' #DataDriven #MarketingInsights' },
+                { title: 'The Contrarian Take', text: 'Everyone in ' + industry + ' is saying the same thing.\n\nHere\'s what they\'re not telling you:\n\nThe conventional wisdom is wrong. Or at least incomplete.\n\nThe people who are winning right now? They\'re doing the opposite of what the "experts" recommend.\n\nWant to know what that is? Drop a comment below and I\'ll share the full breakdown.', hashtags: baseHashtags + ' #ContraryView #RealTalk' },
+                { title: 'The Quick Win', text: '5-minute task that will change your ' + industry + ' results:\n\n1. Open your last 5 pieces of content\n2. Find the one with the best engagement\n3. Ask yourself WHY it worked\n4. Reverse-engineer it\n5. Create 3 variations this week\n\nThat\'s it. No complex strategy. Just intentional repetition of what works.\n\nSave this. Do it today.', hashtags: baseHashtags + ' #QuickWin #ProductivityTip' },
+                { title: 'Story Post', text: 'Six months ago I was struggling with ' + industry + '.\n\nI tried everything. Nothing worked.\n\nThen I discovered one thing that changed everything for me.\n\nI stopped trying to be everywhere and focused on being exceptional somewhere.\n\nResult? Everything changed for our customers.\n\nSometimes less really is more.', hashtags: baseHashtags + ' #StoryTime #JourneyPost' },
+                { title: 'Data-Driven Post', text: 'After analysing 100+ campaigns in ' + industry + ':\n\nTop 10% performers all do these 4 things:\n\n1. They track ONE key metric obsessively\n2. They know exactly who their customer is\n3. They ship fast and iterate faster\n4. They repurpose everything\n\nBottom 90%? They do none of these.\n\nWhich camp are you in?', hashtags: baseHashtags + ' #DataDriven #MarketingInsights' },
             ],
             reel: [
-                { title: 'Tutorial Reel', text: 'HOOK: "I got [result] in [time] — here\'s exactly how"\n\nBEAT 1: State the problem for ' + audience + '\nBEAT 2: Introduce the solution\nBEAT 3: Show step 1 (fast)\nBEAT 4: Show step 2 (fast)\nBEAT 5: Show the result\nCTA: "Follow for more ' + industry + ' tips"\n\nDuration: 20-30s\nText overlay: Key points only\nTrending audio: Check Reels tab for current trends', hashtags: baseHashtags + ' #HowTo #Tutorial' },
-                { title: 'Myth vs Reality', text: 'MYTH: [Common ' + industry + ' belief]\nREALITY: [The truth]\n\nFormat: Quick text cuts, each 1-2s\nTotal: 15s\nAudio: Punchy beat\n\nScript:\n"Everyone says you need X to succeed in ' + industry + '..."\n"But here\'s what actually works..."\n"[Your contrarian insight for ' + audience + ']"\n"Follow ' + brand + ' for more"', hashtags: baseHashtags + ' #MythVsReality #Facts' },
+                { title: 'Tutorial Reel', text: 'HOOK: "I got [result] in [time] — here\'s exactly how"\n\nBEAT 1: State the problem your customers face\nBEAT 2: Introduce the solution\nBEAT 3: Show step 1 (fast)\nBEAT 4: Show step 2 (fast)\nBEAT 5: Show the result\nCTA: "Follow for more ' + industry + ' tips"\n\nDuration: 20-30s\nText overlay: Key points only\nTrending audio: Check Reels tab for current trends', hashtags: baseHashtags + ' #HowTo #Tutorial' },
+                { title: 'Myth vs Reality', text: 'MYTH: [Common ' + industry + ' belief]\nREALITY: [The truth]\n\nFormat: Quick text cuts, each 1-2s\nTotal: 15s\nAudio: Punchy beat\n\nScript:\n"Everyone says you need X to succeed in ' + industry + '..."\n"But here\'s what actually works..."\n"[Your contrarian insight]"\n"Follow ' + brand + ' for more"', hashtags: baseHashtags + ' #MythVsReality #Facts' },
             ],
             carousel: [
-                { title: 'Step-by-Step Guide', text: 'Slide 1: "How to [achieve result] in ' + industry + ' — a step-by-step guide"\n\nSlide 2: "Step 1: Audit your current position. Where are you now vs where you want to be?"\n\nSlide 3: "Step 2: Define your ONE goal. Not five goals. One. Make it specific and measurable."\n\nSlide 4: "Step 3: Identify your best-performing content. Double down on what already works."\n\nSlide 5: "Step 4: Build your system. Consistency beats inspiration every time."\n\nSlide 6: "Step 5: Review weekly. Adapt monthly. Stay consistent always."\n\nSlide 7: "Save this carousel — ' + audience + ' need to see this. Share with someone who\'d benefit."', hashtags: baseHashtags + ' #HowTo #StepByStep' },
+                { title: 'Step-by-Step Guide', text: 'Slide 1: "How to [achieve result] in ' + industry + ' — a step-by-step guide"\n\nSlide 2: "Step 1: Audit your current position. Where are you now vs where you want to be?"\n\nSlide 3: "Step 2: Define your ONE goal. Not five goals. One. Make it specific and measurable."\n\nSlide 4: "Step 3: Identify your best-performing content. Double down on what already works."\n\nSlide 5: "Step 4: Build your system. Consistency beats inspiration every time."\n\nSlide 6: "Step 5: Review weekly. Adapt monthly. Stay consistent always."\n\nSlide 7: "Save this carousel and share with someone who\'d benefit."', hashtags: baseHashtags + ' #HowTo #StepByStep' },
             ],
             story: [
                 { title: 'Question Story', text: 'Quick question for you:\n\nWhat\'s your #1 challenge with ' + industry + ' right now?\n\nA) Finding the time\nB) Knowing what actually works\nC) Getting consistent results\nD) Standing out from competitors\n\nVote and I\'ll share my best tip for whatever wins most!', hashtags: '' },
@@ -1796,6 +1867,41 @@ function renderAutoPullSection(client) {
 // What it does:
 //   - Fetches the client's website HTML via a CORS proxy
 //   - Extracts og:image meta tag (most reliable)
+// Scrape a product/shop page URL for products and images
+function scrapeProductPage(url) {
+    if (!url.startsWith('http')) url = 'https://' + url;
+    var client = getActiveClient();
+
+    var proxies = [
+        'https://api.allorigins.win/raw?url=',
+        'https://corsproxy.io/?',
+        'https://api.codetabs.com/v1/proxy?quest='
+    ];
+
+    function tryProxy(idx) {
+        if (idx >= proxies.length) return;
+        fetch(proxies[idx] + encodeURIComponent(url), { signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined })
+            .then(function(res) { return res.ok ? res.text() : Promise.reject(); })
+            .then(function(html) {
+                var siteData = extractSiteData(html, url);
+                var pulled = extractImagesFromHtml(html, url);
+                if (client) {
+                    client.siteData = siteData;
+                    if (!clientAssets[client.id]) clientAssets[client.id] = {};
+                    if (pulled.length > 0) clientAssets[client.id].autoPulled = pulled;
+                    saveClients();
+                    saveClientAssets();
+                }
+                var msg = '';
+                if (siteData.products.length > 0) msg += siteData.products.length + ' products found';
+                if (pulled.length > 0) msg += (msg ? ', ' : '') + pulled.length + ' images pulled';
+                if (msg) showToast('Product page scanned: ' + msg, 'success');
+            })
+            .catch(function() { tryProxy(idx + 1); });
+    }
+    tryProxy(0);
+}
+
 //   - Extracts <img> tags with meaningful src attributes
 //   - Filters out tiny images (icons, tracking pixels)
 //   - Limits to 12 images maximum
