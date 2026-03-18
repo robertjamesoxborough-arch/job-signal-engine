@@ -4103,3 +4103,47 @@
     color: var(--gray-400);
     line-height: 1.4;
 }
+
+/* ============ BUTTON STATES (disabled, focus, active) ============ */
+.cg-btn:disabled,
+.cg-btn-primary:disabled,
+.cg-btn-secondary:disabled,
+.cg-btn-ghost:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+.cg-btn:focus-visible,
+.cg-btn-primary:focus-visible,
+.cg-btn-secondary:focus-visible,
+.cg-btn-ghost:focus-visible {
+    outline: 2px solid var(--blue-500, #3B82F6);
+    outline-offset: 2px;
+}
+.cg-btn-primary:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.cg-btn-secondary:active {
+    background: var(--gray-100);
+}
+.cg-btn-ghost:active {
+    background: var(--gray-100);
+}
+
+/* ============ ASSET UPLOAD MORE ============ */
+.cg-asset-upload-more {
+    margin-top: 0.5rem;
+}
+.cg-upload-zone-sm {
+    padding: 1.25rem;
+    min-height: auto;
+}
+.cg-upload-zone-sm p {
+    font-size: 0.85rem;
+    margin: 0.5rem 0 0.125rem;
+}
+.cg-upload-zone-sm small {
+    font-size: 0.75rem;
+    color: var(--gray-400);
+}
