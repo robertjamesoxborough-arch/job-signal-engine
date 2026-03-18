@@ -4128,3 +4128,50 @@
     font-size: 0.75rem;
     color: var(--gray-400);
 }
+
+/* ── Auto-pull item action buttons (Use / Download) ── */
+.cg-autopull-item-actions {
+    position: absolute;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 4px;
+    justify-content: center;
+    padding: 0 4px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.cg-autopull-item:hover .cg-autopull-item-actions {
+    opacity: 1;
+}
+.cg-autopull-item-actions .cg-btn-sm {
+    font-size: 0.65rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+/* ── Suggested product image in content cards ── */
+.cg-content-suggested-image {
+    margin: 0.5rem 0;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1.5px solid var(--gray-200);
+    position: relative;
+}
+.cg-content-suggested-image img {
+    width: 100%;
+    max-height: 240px;
+    object-fit: cover;
+    display: block;
+}
+.cg-content-img-actions {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.cg-content-suggested-image:hover .cg-content-img-actions {
+    opacity: 1;
+}

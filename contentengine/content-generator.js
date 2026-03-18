@@ -146,6 +146,10 @@ function openAddClientModal() {
     document.getElementById('newClientAudience').value = '';
     document.getElementById('newClientWebsite').value = '';
     document.getElementById('newClientNotes').value = '';
+    document.getElementById('newClientInstagramUrl').value = '';
+    document.getElementById('newClientFacebookUrl').value = '';
+    document.getElementById('newClientTiktokUrl').value = '';
+    document.getElementById('newClientLinkedinUrl').value = '';
     document.querySelectorAll('#addClientModal .cg-chip').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('#newClientGoal .cg-chip').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.cg-color-swatch').forEach(s => s.classList.remove('active'));
@@ -181,6 +185,12 @@ function saveNewClient() {
     const channels = Array.from(document.querySelectorAll('#newClientChannels .cg-chip.active')).map(c => c.dataset.value);
     const goalEl = document.querySelector('#newClientGoal .cg-chip.active');
     const goal = goalEl ? goalEl.dataset.value : '';
+    const socialUrls = {
+        instagram: (document.getElementById('newClientInstagramUrl').value || '').trim(),
+        facebook: (document.getElementById('newClientFacebookUrl').value || '').trim(),
+        tiktok: (document.getElementById('newClientTiktokUrl').value || '').trim(),
+        linkedin: (document.getElementById('newClientLinkedinUrl').value || '').trim()
+    };
 
     if (state.editingClientId) {
         // Update existing client
@@ -195,6 +205,7 @@ function saveNewClient() {
             client.tone = tone;
             client.channels = channels;
             client.goal = goal;
+            client.socialUrls = socialUrls;
             client.updatedAt = new Date().toISOString();
         }
     } else {
@@ -210,6 +221,7 @@ function saveNewClient() {
             tone: tone,
             channels: channels,
             goal: goal,
+            socialUrls: socialUrls,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             contentCount: 0
@@ -242,6 +254,11 @@ function editClient(clientId, event) {
     document.getElementById('newClientAudience').value = client.audience || '';
     document.getElementById('newClientWebsite').value = client.website || '';
     document.getElementById('newClientNotes').value = client.notes || '';
+    var su = client.socialUrls || {};
+    document.getElementById('newClientInstagramUrl').value = su.instagram || '';
+    document.getElementById('newClientFacebookUrl').value = su.facebook || '';
+    document.getElementById('newClientTiktokUrl').value = su.tiktok || '';
+    document.getElementById('newClientLinkedinUrl').value = su.linkedin || '';
 
     document.querySelectorAll('.cg-color-swatch').forEach(s => {
         s.classList.toggle('active', s.dataset.color === client.color);
@@ -572,6 +589,38 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     var refEl = document.getElementById('contentReference');
     const reference = refEl ? refEl.value || '' : '';
 
+    // Get scraped website data (products, description, etc.)
+    var siteData = (client && client.siteData) ? client.siteData : { products: [], description: '', tagline: '', prices: [], categories: [], links: [] };
+    var hasProducts = siteData.products.length > 0;
+    var siteDesc = siteData.description || '';
+    var products = siteData.products || [];
+
+    // Get auto-pulled images for referencing in content
+    var assets = client ? getClientAssets(client.id) : {};
+    var pulledImages = (assets.autoPulled || []).filter(function(img) { return img.url; });
+
+    // Helper to get a product name for templates
+    function prod(idx) {
+        if (products.length === 0) return industry;
+        return products[idx % products.length].name || industry;
+    }
+    function prodDesc(idx) {
+        if (products.length === 0) return '';
+        return products[idx % products.length].description || '';
+    }
+    function prodPrice(idx) {
+        if (products.length === 0) return '';
+        return products[idx % products.length].price || '';
+    }
+    function prodImg(idx) {
+        if (products.length === 0 && pulledImages.length > 0) return pulledImages[idx % pulledImages.length].url;
+        if (products.length === 0) return '';
+        return products[idx % products.length].image || (pulledImages.length > 0 ? pulledImages[idx % pulledImages.length].url : '');
+    }
+
+    // Build brand context line from site description
+    var brandContext = siteDesc ? siteDesc : (brand + ' — ' + industry);
+
     // Build dynamic hashtags based on brand/industry
     const brandTag = '#' + brand.replace(/[^a-zA-Z0-9]/g, '');
     const industryTag = '#' + industry.replace(/[^a-zA-Z0-9]/g, '');
@@ -585,9 +634,43 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     };
     const baseHashtags = brandTag + ' ' + industryTag + ' ' + (goalTags[goal] || '#Growth #Strategy');
 
-    // Fully dynamic content templates that use client info
+    // Product-specific hashtags
+    var productTags = hasProducts ? ' #' + prod(0).replace(/[^a-zA-Z0-9]/g, '') : '';
+
+    // Build content templates — product-aware when site data exists
     const contentTemplates = {
-        post: [
+        post: hasProducts ? [
+            {
+                title: 'Product Spotlight — ' + prod(0),
+                text: 'Meet ' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '.\n\n' + (prodDesc(0) || brandContext) + '\n\nThis is one of our bestsellers and here\'s why ' + audience + ' love it:\n\n• Designed for real everyday use\n• Quality you can see and feel\n• Perfect for anyone who values ' + industry.toLowerCase() + '\n\nTap the link in bio to shop ' + prod(0) + ' now.' + (prodImg(0) ? '\n\n[USE IMAGE: ' + prodImg(0) + ']' : ''),
+                hashtags: baseHashtags + ' #ShopNow' + productTags,
+                suggestedImage: prodImg(0)
+            },
+            {
+                title: 'Product In Action — ' + prod(1),
+                text: 'POV: You just got your ' + prod(1) + ' from ' + brand + '.\n\n' + (prodDesc(1) || 'This is what quality ' + industry.toLowerCase() + ' looks like.') + '\n\nWe designed this for ' + audience + ' who want the best — not just another option.\n\nSee it for yourself. Link in bio.',
+                hashtags: baseHashtags + ' #NewArrival' + productTags,
+                suggestedImage: prodImg(1)
+            },
+            {
+                title: 'Why We Made ' + prod(2),
+                text: 'Every product tells a story.\n\n' + prod(2) + ' was created because ' + audience + ' deserved something better in ' + industry.toLowerCase() + '.\n\n' + (prodDesc(2) || 'Thoughtfully designed. Built to last. Made for you.') + '\n\nThis isn\'t just another ' + industry.toLowerCase() + ' product. It\'s what happens when you obsess over the details.\n\n' + (prodPrice(2) ? 'Starting at ' + prodPrice(2) + '. ' : '') + 'Shop now — link in bio.',
+                hashtags: baseHashtags + ' #BrandStory #QualityMatters',
+                suggestedImage: prodImg(2)
+            },
+            {
+                title: 'Customer Favourite — ' + prod(0),
+                text: '"This is the best ' + industry.toLowerCase() + ' purchase I\'ve ever made."\n\nThat\'s what our customers keep saying about ' + prod(0) + '.\n\n' + (prodDesc(0) || brandContext) + '\n\n' + (prodPrice(0) ? prodPrice(0) + ' — ' : '') + 'Available now at ' + brand + '.\n\nLink in bio to shop.',
+                hashtags: baseHashtags + ' #CustomerFavourite #Review',
+                suggestedImage: prodImg(0)
+            },
+            {
+                title: 'Just Dropped — ' + prod(3),
+                text: 'NEW from ' + brand + '.\n\n' + prod(3) + (prodPrice(3) ? ' — ' + prodPrice(3) : '') + '\n\n' + (prodDesc(3) || 'Designed for ' + audience + ' who know what they want.') + '\n\nLimited stock. Don\'t sleep on this one.\n\nShop now — link in bio.',
+                hashtags: baseHashtags + ' #NewDrop #JustLanded' + productTags,
+                suggestedImage: prodImg(3)
+            }
+        ] : [
             {
                 title: 'Value Bomb Post',
                 text: 'Most ' + audience + ' are making this mistake.\n\nHere are 3 things you can do TODAY to get better results with ' + industry + ':\n\n1. Audit what you\'re currently doing\n2. Identify the biggest gap in your strategy\n3. Take one focused action this week\n\nSmall changes = massive results over time.\n\nSave this post. Come back to it. Thank me later.',
@@ -614,7 +697,19 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
                 hashtags: baseHashtags + ' #MythBusted #SmartStrategy'
             }
         ],
-        story: [
+        story: hasProducts ? [
+            {
+                title: 'Product Quick-Look Story',
+                text: 'SWIPE UP to shop ' + prod(0) + ' ' + (prodPrice(0) ? '— ' + prodPrice(0) : '') + '\n\n' + (prodDesc(0) ? prodDesc(0).substring(0, 80) + '...' : 'From ' + brand + ' — designed for ' + audience + '.') + '\n\n[USE PRODUCT IMAGE]',
+                hashtags: '',
+                suggestedImage: prodImg(0)
+            },
+            {
+                title: 'Poll Story',
+                text: 'Which do you prefer?\n\n' + (products.length >= 2 ? 'A) ' + prod(0) + '\nB) ' + prod(1) : 'A) Classic\nB) New drop') + '\n\nVote and we\'ll reveal the winner tomorrow!',
+                hashtags: ''
+            }
+        ] : [
             {
                 title: 'Quick Tip Story',
                 text: 'Quick tip for ' + audience + ':\n\nThe #1 thing that will move the needle for your ' + industry + ' strategy this week?\n\nFocus on ONE goal. Not five. ONE.\n\nSwipe up to learn our full framework.',
@@ -626,7 +721,20 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
                 hashtags: ''
             }
         ],
-        reel: [
+        reel: hasProducts ? [
+            {
+                title: 'Product Reveal Reel — ' + prod(0),
+                text: 'HOOK: "The ' + industry.toLowerCase() + ' product everyone\'s been asking about"\n\nSETUP: Close-up shots of ' + prod(0) + ' packaging / unboxing\n\nREVEAL: Show the product being used / worn / in action\n\nCTA: "Shop ' + prod(0) + ' — link in bio"\n\n' + (prodPrice(0) ? 'Price flash: ' + prodPrice(0) + '\n' : '') + 'Audio: Trending sound\nDuration: 15-30s\n\n[USE PRODUCT IMAGES/VIDEO]',
+                hashtags: baseHashtags + ' #Reels #Unboxing' + productTags,
+                suggestedImage: prodImg(0)
+            },
+            {
+                title: 'How To Style/Use Reel — ' + prod(1),
+                text: '"3 ways to style ' + prod(1) + '"\n\nLook 1: [Show first use case / styling]\nLook 2: [Show second use case / styling]\nLook 3: [Show third use case / styling]\n\n"Which is your favourite? Comment below"\n\nDuration: 15-30s fast cuts\nFormat: Vertical, product-focused',
+                hashtags: baseHashtags + ' #StyleGuide #HowTo' + productTags,
+                suggestedImage: prodImg(1)
+            }
+        ] : [
             {
                 title: 'Hook Reel Script',
                 text: 'HOOK: "If you\'re a ' + audience.split(' ')[0] + ' in ' + industry + ', stop scrolling"\n\nSETUP: Quick cuts showing the problem your audience faces\n\nREVEAL: "Here\'s what the top 1% do differently..."\n\nVALUE: Share 1 actionable tip\n\nCTA: "Follow ' + brand + ' for more"\n\nAudio: Trending sound\nDuration: 15-30s\nCaption: This is the game changer nobody talks about...',
@@ -638,7 +746,15 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
                 hashtags: baseHashtags + ' #BeforeAndAfter #Transformation'
             }
         ],
-        carousel: [
+        carousel: hasProducts ? [
+            {
+                title: 'Product Range Carousel',
+                text: products.slice(0, 6).map(function(p, i) {
+                    return 'Slide ' + (i + 1) + ': "' + p.name + '"' + (p.price ? ' — ' + p.price : '') + (p.description ? '\n' + p.description.substring(0, 100) : '') + (p.image ? '\n[IMAGE: ' + p.image + ']' : '');
+                }).join('\n\n') + '\n\nFinal Slide: "Shop the full collection — link in bio"\n\nDesign: Clean product photography, consistent brand styling',
+                hashtags: baseHashtags + ' #CarouselPost #ShopNow #Collection'
+            }
+        ] : [
             {
                 title: 'Educational Carousel',
                 text: 'Slide 1: "5 ' + industry + ' Strategies That Actually Work in 2026"\n\nSlide 2: "1. Know Your Audience — Research deeply before creating anything. What keeps ' + audience + ' up at night?"\n\nSlide 3: "2. Content First — Lead with value, not sales. Give before you ask."\n\nSlide 4: "3. Platform Native — What works on Instagram won\'t work on LinkedIn. Tailor everything."\n\nSlide 5: "4. Data-Driven — Track what resonates. Double down on winners. Kill what doesn\'t work."\n\nSlide 6: "5. Consistency > Perfection — Showing up regularly beats being perfect occasionally."\n\nSlide 7: "Save this carousel and start implementing TODAY"\n\nDesign: Clean, bold typography on gradient backgrounds',
@@ -648,18 +764,34 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
         thread: [
             {
                 title: 'Twitter/X Thread',
-                text: 'THREAD: The ' + industry + ' playbook that ' + audience + ' need to know about\n\n1/ Most people in ' + industry + ' are doing the same thing everyone else is doing. That\'s why they get average results.\n\nHere\'s how to break out of the pack:\n\n2/ Step 1: Define your unique angle.\n\nWhat can YOU say about ' + industry + ' that nobody else is saying? Your experience, your perspective, your story.\n\nThat\'s your competitive advantage.\n\n3/ Step 2: Pick ONE platform and dominate it.\n\nDon\'t spread yourself thin across 7 platforms. Master one first, then expand.\n\n4/ Step 3: Create a content engine.\n\nOne long-form piece per week, repurposed into 5-10 shorter pieces across platforms.\n\nWork smarter, not harder.\n\n5/ Step 4: Engage more than you broadcast.\n\nComment on posts. Reply to DMs. Build real relationships.\n\nThe algorithm rewards genuine engagement.\n\n6/ If you found this valuable, follow ' + brand + ' for more insights on ' + industry + '.\n\nRepost to help someone else who needs to see this.',
+                text: hasProducts
+                    ? 'THREAD: Why ' + audience + ' are switching to ' + brand + '\n\n1/ ' + brandContext + '\n\n2/ Our bestseller? ' + prod(0) + '.' + (prodDesc(0) ? ' ' + prodDesc(0).substring(0, 120) : '') + '\n\n3/ But it\'s not just one product. ' + (products.length > 1 ? 'We also make ' + products.slice(1, 4).map(function(p){return p.name;}).join(', ') + '.' : 'We\'re building an entire range for ' + audience + '.') + '\n\n4/ What makes ' + brand + ' different? We obsess over quality. Every detail matters.\n\n5/ Don\'t take our word for it — see what customers are saying. Link in bio.\n\nRepost if you think ' + audience + ' need to see this.'
+                    : 'THREAD: The ' + industry + ' playbook that ' + audience + ' need to know about\n\n1/ Most people in ' + industry + ' are doing the same thing everyone else is doing. That\'s why they get average results.\n\nHere\'s how to break out of the pack:\n\n2/ Step 1: Define your unique angle.\n\nWhat can YOU say about ' + industry + ' that nobody else is saying? Your experience, your perspective, your story.\n\nThat\'s your competitive advantage.\n\n3/ Step 2: Pick ONE platform and dominate it.\n\nDon\'t spread yourself thin across 7 platforms. Master one first, then expand.\n\n4/ Step 3: Create a content engine.\n\nOne long-form piece per week, repurposed into 5-10 shorter pieces across platforms.\n\nWork smarter, not harder.\n\n5/ Step 4: Engage more than you broadcast.\n\nComment on posts. Reply to DMs. Build real relationships.\n\nThe algorithm rewards genuine engagement.\n\n6/ If you found this valuable, follow ' + brand + ' for more insights on ' + industry + '.\n\nRepost to help someone else who needs to see this.',
                 hashtags: ''
             }
         ],
         article: [
             {
-                title: 'Long-Form Article',
-                text: '# The Ultimate ' + industry + ' Guide for ' + audience + ' in 2026\n\n## Introduction\nThe landscape of ' + industry + ' is changing fast. What worked last year might not work today. In this comprehensive guide, we\'ll cover everything ' + audience + ' need to know to stay ahead.\n\n## Section 1: The Current State of ' + industry + '\n[Analyze trends, challenges, and opportunities in the industry]\n\n## Section 2: Building Your Strategy\n[Step-by-step framework tailored to your audience]\n\n## Section 3: Execution Playbook\n[Practical tactics, tools, and timelines]\n\n## Section 4: Measuring Success\n[KPIs, metrics, and benchmarks that matter]\n\n## Conclusion\nThe best time to refine your ' + industry + ' strategy was yesterday. The second best time is today.\n\nWord count target: 2,000-3,000 words\nSEO keywords: ' + industry + ', ' + audience + ', strategy, guide, 2026',
+                title: hasProducts ? 'Product Guide — ' + brand : 'Long-Form Article',
+                text: hasProducts
+                    ? '# The Complete ' + brand + ' Guide: ' + industry + ' for ' + audience + '\n\n## About ' + brand + '\n' + brandContext + '\n\n## Our Products\n' + products.slice(0, 8).map(function(p) { return '### ' + p.name + (p.price ? ' — ' + p.price : '') + '\n' + (p.description || 'A standout piece from our collection.'); }).join('\n\n') + '\n\n## Why ' + audience + ' Choose ' + brand + '\n[Customer testimonials and social proof]\n\n## Where to Buy\nShop the full collection at ' + (client && client.website ? client.website : 'our website') + '\n\nSEO keywords: ' + brand + ', ' + industry + ', ' + products.slice(0, 3).map(function(p){return p.name;}).join(', ')
+                    : '# The Ultimate ' + industry + ' Guide for ' + audience + ' in 2026\n\n## Introduction\nThe landscape of ' + industry + ' is changing fast. What worked last year might not work today. In this comprehensive guide, we\'ll cover everything ' + audience + ' need to know to stay ahead.\n\n## Section 1: The Current State of ' + industry + '\n[Analyze trends, challenges, and opportunities in the industry]\n\n## Section 2: Building Your Strategy\n[Step-by-step framework tailored to your audience]\n\n## Section 3: Execution Playbook\n[Practical tactics, tools, and timelines]\n\n## Section 4: Measuring Success\n[KPIs, metrics, and benchmarks that matter]\n\n## Conclusion\nThe best time to refine your ' + industry + ' strategy was yesterday. The second best time is today.\n\nWord count target: 2,000-3,000 words\nSEO keywords: ' + industry + ', ' + audience + ', strategy, guide, 2026',
                 hashtags: ''
             }
         ],
-        ad: [
+        ad: hasProducts ? [
+            {
+                title: 'Product Ad — ' + prod(0),
+                text: 'AD CREATIVE\n\nHeadline: "' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '"\n\nPrimary text: "' + (prodDesc(0) || brandContext) + ' Designed for ' + audience + ' who demand the best. Shop now at ' + brand + '."\n\nCTA: Shop Now\n\nTarget: ' + audience + '\nPlacement: Feed, Stories, Reels\n\n[USE IMAGE: ' + (prodImg(0) || 'Product shot of ' + prod(0)) + ']\n\nVariant B Headline: "' + audience + ' — meet your new favourite ' + industry.toLowerCase() + '"\nVariant C Headline: "' + prod(0) + '. Finally, ' + industry.toLowerCase() + ' done right."',
+                hashtags: '',
+                suggestedImage: prodImg(0)
+            },
+            {
+                title: 'Collection Ad — ' + brand,
+                text: 'AD CREATIVE\n\nHeadline: "Shop ' + brand + ' — ' + industry + ' for ' + audience + '"\n\nPrimary text: "' + brandContext + ' Featuring: ' + products.slice(0, 3).map(function(p){return p.name;}).join(', ') + (products.length > 3 ? ' and more' : '') + '. Free shipping on your first order."\n\nCTA: Shop Now\n\nTarget: ' + audience + '\nPlacement: Feed, Stories, Reels\nFormat: Carousel ad showing multiple products\n\nVariant B: Dynamic product ad pulling from catalogue',
+                hashtags: ''
+            }
+        ] : [
             {
                 title: 'High-Converting Ad',
                 text: 'AD CREATIVE\n\nHeadline: "' + audience + ': Here\'s what you\'re missing about ' + industry + '"\n\nPrimary text: "' + brand + ' helps ' + audience + ' get better results with ' + industry + '. Join hundreds of clients who\'ve transformed their approach. See how we can help you too."\n\nCTA: Learn More\n\nTarget: ' + audience + '\nPlacement: Feed, Stories, Reels\n\nVariant B Headline: "The ' + industry + ' strategy ' + audience + ' are switching to"\nVariant C Headline: "Stop guessing. Start growing with ' + brand + '"',
@@ -686,7 +818,8 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             text: template.text,
             hashtags: template.hashtags,
             status: 'draft',
-            score: computeContentScore(type, channel, goal)
+            score: computeContentScore(type, channel, goal),
+            suggestedImage: template.suggestedImage || ''
         });
     }
 
@@ -743,6 +876,7 @@ function renderContent() {
                 </div>
             </div>
             <h3 class="cg-content-title">${piece.title}</h3>
+            ${piece.suggestedImage ? '<div class="cg-content-suggested-image"><img src="' + piece.suggestedImage + '" alt="Suggested product image" loading="lazy" onerror="this.parentElement.style.display=\'none\'"><div class="cg-content-img-actions"><button class="cg-btn cg-btn-sm cg-btn-primary" onclick="downloadAutoPulledImage(\'' + piece.suggestedImage + '\', \'' + piece.title.replace(/'/g, '') + '\')">Download Image</button></div></div>' : ''}
             <div class="cg-content-text" id="text-${piece.id}">
                 <pre>${piece.text}</pre>
             </div>
@@ -1585,10 +1719,39 @@ function renderAutoPullSection(client) {
             html += '<div class="cg-autopull-item">' +
                 '<img src="' + escapeHtml(img.url) + '" alt="' + escapeHtml(img.alt || 'Website image') + '" loading="lazy" onerror="this.parentElement.style.display=\'none\'">' +
                 '<div class="cg-autopull-item-label">Website</div>' +
+                '<div class="cg-autopull-item-actions">' +
+                    '<button type="button" class="cg-btn cg-btn-sm cg-btn-primary" onclick="importAutoPulledAsset(' + idx + ', \'website\')" title="Import to asset library">Use</button>' +
+                    '<button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="downloadAutoPulledImage(\'' + escapeHtml(img.url) + '\', \'' + escapeHtml(img.alt || 'image') + '\')" title="Download image">Download</button>' +
+                '</div>' +
                 '<button type="button" class="cg-asset-slot-remove" onclick="removeAutoPulledAsset(' + idx + ')">&times;</button>' +
             '</div>';
         });
         html += '</div>';
+    }
+
+    // Show scraped product data if available
+    var siteData = client.siteData || {};
+    if (siteData.products && siteData.products.length > 0) {
+        html += '<div class="cg-autopull-header" style="margin-top:1rem;">' +
+            '<div><strong>Products found on website</strong>' +
+            '<span class="cg-autopull-note">' + siteData.products.length + ' product' + (siteData.products.length !== 1 ? 's' : '') + ' detected — used to generate product-specific content.</span>' +
+            '</div></div>';
+        html += '<div class="cg-autopull-grid" style="grid-template-columns:repeat(auto-fill,minmax(180px,1fr));">';
+        siteData.products.slice(0, 12).forEach(function(p) {
+            html += '<div class="cg-autopull-item" style="aspect-ratio:auto;padding:0.5rem;display:flex;flex-direction:column;gap:0.25rem;">';
+            if (p.image) {
+                html += '<img src="' + escapeHtml(p.image) + '" alt="' + escapeHtml(p.name) + '" loading="lazy" style="height:100px;object-fit:cover;border-radius:4px;" onerror="this.style.display=\'none\'">';
+            }
+            html += '<strong style="font-size:0.75rem;line-height:1.2;">' + escapeHtml(p.name) + '</strong>';
+            if (p.price) html += '<span style="font-size:0.7rem;color:var(--emerald-600);">' + escapeHtml(p.price) + '</span>';
+            if (p.description) html += '<span style="font-size:0.65rem;color:var(--gray-400);line-height:1.2;">' + escapeHtml(p.description.substring(0, 80)) + '</span>';
+            html += '</div>';
+        });
+        html += '</div>';
+    }
+    if (siteData.description) {
+        html += '<div style="margin-top:0.5rem;padding:0.5rem 0.75rem;background:var(--gray-50);border-radius:6px;font-size:0.75rem;color:var(--gray-500);">' +
+            '<strong>Site description:</strong> ' + escapeHtml(siteData.description) + '</div>';
     }
 
     // Social pull
@@ -1613,6 +1776,10 @@ function renderAutoPullSection(client) {
             html += '<div class="cg-autopull-item">' +
                 '<img src="' + escapeHtml(img.url) + '" alt="' + escapeHtml(img.alt || 'Social image') + '" loading="lazy" onerror="this.parentElement.style.display=\'none\'">' +
                 '<div class="cg-autopull-item-label">' + escapeHtml(img.source || 'Social') + '</div>' +
+                '<div class="cg-autopull-item-actions">' +
+                    '<button type="button" class="cg-btn cg-btn-sm cg-btn-primary" onclick="importAutoPulledAsset(' + idx + ', \'social\')" title="Import to asset library">Use</button>' +
+                    '<button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" onclick="downloadAutoPulledImage(\'' + escapeHtml(img.url) + '\', \'' + escapeHtml(img.alt || 'image') + '\')" title="Download image">Download</button>' +
+                '</div>' +
                 '<button type="button" class="cg-asset-slot-remove" onclick="removeSocialPulledAsset(' + idx + ')">&times;</button>' +
             '</div>';
         });
@@ -1650,7 +1817,7 @@ function triggerAutoPull() {
     var url = client.website.trim();
     if (!url.startsWith('http')) url = 'https://' + url;
 
-    showToast('Pulling images from ' + url + '...', 'info');
+    showToast('Scanning website for images, products & content...', 'info');
 
     // Try multiple CORS proxies in order — each may be down or blocked
     var proxies = [
@@ -1672,37 +1839,152 @@ function triggerAutoPull() {
             })
             .then(function(html) {
                 var pulled = extractImagesFromHtml(html, url);
-                if (pulled.length === 0) {
-                    showToast('No usable images found on that page', 'info');
-                    return;
-                }
+                // Also extract product/service info from the page
+                var siteData = extractSiteData(html, url);
                 if (!clientAssets[client.id]) clientAssets[client.id] = {};
                 clientAssets[client.id].autoPulled = pulled;
+                // Store scraped site data on the client for content generation
+                client.siteData = siteData;
+                saveClients();
                 saveClientAssets();
                 renderAssetLibrary();
-                showToast(pulled.length + ' image' + (pulled.length !== 1 ? 's' : '') + ' imported — review before use', 'success');
+                var msg = pulled.length + ' image' + (pulled.length !== 1 ? 's' : '');
+                if (siteData.products.length > 0) msg += ', ' + siteData.products.length + ' product' + (siteData.products.length !== 1 ? 's' : '');
+                if (siteData.description) msg += ', site description';
+                showToast(msg + ' imported — review before use', 'success');
             })
             .catch(function() { tryProxy(idx + 1); });
     }
     tryProxy(0);
 }
 
+// Extract products, descriptions, pricing, and brand info from website HTML
+function extractSiteData(html, baseUrl) {
+    var origin = '';
+    try { origin = new URL(baseUrl).origin; } catch(e) {}
+
+    var data = { products: [], description: '', tagline: '', prices: [], categories: [], links: [] };
+
+    // 1. Meta description / og:description
+    var descMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i)
+                 || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
+    if (descMatch) data.description = descMatch[1].trim();
+    var ogDescMatch = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)
+                   || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:description["']/i);
+    if (ogDescMatch && (!data.description || ogDescMatch[1].length > data.description.length)) {
+        data.description = ogDescMatch[1].trim();
+    }
+
+    // 2. Site title / tagline
+    var titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    if (titleMatch) data.tagline = titleMatch[1].trim().split('|')[0].split('-')[0].trim();
+    var ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
+    if (ogTitle) data.tagline = ogTitle[1].trim();
+
+    // 3. Extract products — look for structured data (JSON-LD) first
+    var jsonLdMatches = html.match(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi) || [];
+    jsonLdMatches.forEach(function(block) {
+        var inner = block.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '');
+        try {
+            var ld = JSON.parse(inner);
+            var items = Array.isArray(ld) ? ld : [ld];
+            items.forEach(function(item) {
+                if (item['@type'] === 'Product' || item['@type'] === 'IndividualProduct') {
+                    var prod = { name: item.name || '', description: (item.description || '').substring(0, 200), price: '', image: '' };
+                    if (item.offers) {
+                        var offer = Array.isArray(item.offers) ? item.offers[0] : item.offers;
+                        if (offer.price) prod.price = (offer.priceCurrency || '') + ' ' + offer.price;
+                    }
+                    if (item.image) {
+                        prod.image = Array.isArray(item.image) ? item.image[0] : (typeof item.image === 'string' ? item.image : (item.image.url || ''));
+                    }
+                    if (prod.name) data.products.push(prod);
+                }
+                // Handle product lists / ItemList
+                if (item['@type'] === 'ItemList' && item.itemListElement) {
+                    item.itemListElement.forEach(function(li) {
+                        if (li.item && li.item['@type'] === 'Product') {
+                            data.products.push({ name: li.item.name || '', description: (li.item.description || '').substring(0, 200), price: '', image: li.item.image || '' });
+                        }
+                    });
+                }
+            });
+        } catch(e) {}
+    });
+
+    // 4. If no JSON-LD products, try common product patterns in HTML
+    if (data.products.length === 0) {
+        // Look for product cards with price patterns
+        var pricePattern = /[\$\£\€]\s*\d+[\.,]?\d*/g;
+        var priceMatches = html.match(pricePattern) || [];
+        data.prices = priceMatches.slice(0, 20).filter(function(p, i, arr) { return arr.indexOf(p) === i; });
+
+        // Look for product-like elements (common class patterns)
+        var productNameMatches = html.match(/<(?:h[23456]|a|span|div)[^>]*class=["'][^"']*(?:product[_-]?(?:name|title)|card[_-]?title|item[_-]?name)[^"']*["'][^>]*>([^<]{3,80})<\//gi) || [];
+        productNameMatches.forEach(function(m) {
+            var nameInner = m.match(/>([^<]+)<\//);
+            if (nameInner && nameInner[1].trim().length > 2) {
+                data.products.push({ name: nameInner[1].trim(), description: '', price: '', image: '' });
+            }
+        });
+
+        // Also try aria-label on product links
+        var ariaProducts = html.match(/<a[^>]*aria-label=["']([^"']{3,80})["'][^>]*class=["'][^"']*product/gi) || [];
+        ariaProducts.forEach(function(m) {
+            var labelMatch = m.match(/aria-label=["']([^"']+)["']/i);
+            if (labelMatch) data.products.push({ name: labelMatch[1].trim(), description: '', price: '', image: '' });
+        });
+    }
+
+    // 5. Extract key page links (shop, collections, about, etc.)
+    var linkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]{2,40})<\/a>/gi;
+    var linkMatch;
+    while ((linkMatch = linkPattern.exec(html)) !== null && data.links.length < 10) {
+        var href = linkMatch[1];
+        var text = linkMatch[2].trim();
+        if (/shop|collection|product|catalog|about|service/i.test(href) || /shop|collection|product|catalog|about|service/i.test(text)) {
+            var fullHref = resolveUrl(href, origin) || href;
+            data.links.push({ url: fullHref, text: text });
+        }
+    }
+
+    // Deduplicate products by name
+    var seen = {};
+    data.products = data.products.filter(function(p) {
+        var key = p.name.toLowerCase();
+        if (seen[key]) return false;
+        seen[key] = true;
+        return true;
+    }).slice(0, 20);
+
+    return data;
+}
+
 function triggerSocialPull() {
     var client = getActiveClient();
     if (!client) { showToast('Select a client first', 'error'); return; }
 
+    var su = client.socialUrls || {};
     var channels = Array.isArray(client.channels) ? client.channels.map(function(c){ return c.trim().toLowerCase(); }) : (client.channels || '').split(',').map(function(c){ return c.trim().toLowerCase(); }).filter(Boolean);
-    if (channels.length === 0) { showToast('No social channels set for this client. Edit the client profile first.', 'info'); return; }
+    if (channels.length === 0 && !su.instagram && !su.facebook && !su.linkedin && !su.tiktok) {
+        showToast('No social channels or profile URLs set. Edit client profile to add them.', 'info'); return;
+    }
 
-    // Build social profile URLs from client name + channels
+    // Use actual URLs from client profile first, fall back to guessing from name
     var slug = (client.name || '').toLowerCase().replace(/[^a-z0-9]+/g, '').substring(0, 30);
     var socialUrls = [];
-    channels.forEach(function(ch) {
-        if (ch === 'instagram') socialUrls.push({ platform: 'Instagram', url: 'https://www.instagram.com/' + slug + '/' });
-        if (ch === 'facebook') socialUrls.push({ platform: 'Facebook', url: 'https://www.facebook.com/' + slug + '/' });
-        if (ch === 'linkedin') socialUrls.push({ platform: 'LinkedIn', url: 'https://www.linkedin.com/company/' + slug + '/' });
-        if (ch === 'tiktok') socialUrls.push({ platform: 'TikTok', url: 'https://www.tiktok.com/@' + slug });
-    });
+    if (su.instagram || channels.indexOf('instagram') >= 0) {
+        socialUrls.push({ platform: 'Instagram', url: su.instagram || ('https://www.instagram.com/' + slug + '/') });
+    }
+    if (su.facebook || channels.indexOf('facebook') >= 0) {
+        socialUrls.push({ platform: 'Facebook', url: su.facebook || ('https://www.facebook.com/' + slug + '/') });
+    }
+    if (su.linkedin || channels.indexOf('linkedin') >= 0) {
+        socialUrls.push({ platform: 'LinkedIn', url: su.linkedin || ('https://www.linkedin.com/company/' + slug + '/') });
+    }
+    if (su.tiktok || channels.indexOf('tiktok') >= 0) {
+        socialUrls.push({ platform: 'TikTok', url: su.tiktok || ('https://www.tiktok.com/@' + slug) });
+    }
 
     if (socialUrls.length === 0) { showToast('No supported social channels found', 'info'); return; }
 
@@ -1831,6 +2113,74 @@ function removeSocialPulledAsset(idx) {
     clientAssets[client.id].socialPulled.splice(idx, 1);
     saveClientAssets(); renderAssetLibrary();
     showToast('Social image removed', 'info');
+}
+
+// Import an auto-pulled image into the client's usable asset library (as stock/extra)
+function importAutoPulledAsset(idx, source) {
+    var client = getActiveClient();
+    if (!client) return;
+    if (!clientAssets[client.id]) clientAssets[client.id] = {};
+    var pulled = source === 'social' ? (clientAssets[client.id].socialPulled || []) : (clientAssets[client.id].autoPulled || []);
+    var img = pulled[idx];
+    if (!img) return;
+
+    // Fetch the image through a proxy and convert to dataURL so it's stored locally
+    showToast('Importing image...', 'info');
+    var proxies = ['https://api.allorigins.win/raw?url=', 'https://corsproxy.io/?'];
+
+    function tryFetch(pIdx) {
+        if (pIdx >= proxies.length) {
+            // Fallback: store the URL directly as an extra asset
+            if (!clientAssets[client.id].extra) clientAssets[client.id].extra = [];
+            clientAssets[client.id].extra.push({ dataUrl: img.url, mimeType: 'image/jpeg', filename: (img.alt || 'imported-image') + '.jpg' });
+            saveClientAssets(); renderAssetLibrary();
+            showToast('Image added to your assets (as link — download for best quality)', 'success');
+            return;
+        }
+        fetch(proxies[pIdx] + encodeURIComponent(img.url), { signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined })
+            .then(function(res) { return res.ok ? res.blob() : Promise.reject(); })
+            .then(function(blob) {
+                var reader = new FileReader();
+                reader.onload = function() {
+                    if (!clientAssets[client.id].extra) clientAssets[client.id].extra = [];
+                    clientAssets[client.id].extra.push({ dataUrl: reader.result, mimeType: blob.type || 'image/jpeg', filename: (img.alt || 'imported-image') + '.jpg' });
+                    saveClientAssets(); renderAssetLibrary();
+                    showToast('Image imported to your asset library', 'success');
+                };
+                reader.readAsDataURL(blob);
+            })
+            .catch(function() { tryFetch(pIdx + 1); });
+    }
+    tryFetch(0);
+}
+
+// Download an auto-pulled image to the user's device
+function downloadAutoPulledImage(imageUrl, altText) {
+    // Try fetching through proxy to get the actual blob for download
+    var proxies = ['https://api.allorigins.win/raw?url=', 'https://corsproxy.io/?'];
+
+    function tryFetch(pIdx) {
+        if (pIdx >= proxies.length) {
+            // Fallback: open in new tab
+            window.open(imageUrl, '_blank');
+            return;
+        }
+        fetch(proxies[pIdx] + encodeURIComponent(imageUrl), { signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined })
+            .then(function(res) { return res.ok ? res.blob() : Promise.reject(); })
+            .then(function(blob) {
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = (altText || 'image').replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50) + '.jpg';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Image downloaded', 'success');
+            })
+            .catch(function() { tryFetch(pIdx + 1); });
+    }
+    tryFetch(0);
 }
 
 function removeClientExtraAsset(idx) {
