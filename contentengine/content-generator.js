@@ -3,6 +3,69 @@
    World-class content generation & ads optimization
    ============================================ */
 
+// ============ UTILITIES ============
+function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
+}
+
+function showToast(message, type) {
+    type = type || 'info';
+    var existing = document.querySelectorAll('.cg-toast');
+    existing.forEach(function(t) { t.remove(); });
+
+    var toast = document.createElement('div');
+    toast.className = 'cg-toast cg-toast-' + type;
+    toast.innerHTML = '<span>' + escapeHtml(message) + '</span><button class="cg-toast-close" onclick="this.parentElement.remove()">&times;</button>';
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    requestAnimationFrame(function() {
+        toast.classList.add('visible');
+    });
+
+    setTimeout(function() {
+        toast.classList.remove('visible');
+        setTimeout(function() { if (toast.parentElement) toast.remove(); }, 300);
+    }, 4000);
+}
+
+function showResult(el, type, message) {
+    if (!el) return;
+    el.style.display = 'block';
+    el.className = 'cg-int-result cg-int-result-' + type;
+    el.textContent = message;
+    setTimeout(function() { el.style.display = 'none'; }, 5000);
+}
+
+function renderAnalytics() {
+    var client = getActiveClient();
+    if (!client) return;
+
+    var cInts = integrations[client.id] || {};
+    var ga4 = cInts.ga4;
+
+    // GA4 connect banner
+    var banner = document.getElementById('gaConnectBanner');
+    var gaSection = document.getElementById('gaStatsSection');
+    if (banner) banner.style.display = ga4 ? 'none' : 'flex';
+    if (gaSection) gaSection.style.display = ga4 ? 'block' : 'none';
+
+    if (ga4) {
+        renderGa4Dashboard(client, ga4);
+    }
+
+    // Content published stats (update the existing static elements)
+    var pubEl = document.getElementById('analyticsPublished');
+    var chEl = document.getElementById('analyticsChannels');
+    var intEl = document.getElementById('analyticsIntegrations');
+    if (pubEl) pubEl.textContent = client.contentCount || 0;
+    if (chEl) chEl.textContent = (client.channels || []).length;
+    if (intEl) intEl.textContent = Object.keys(cInts).length;
+}
+
 // ============ STATE ============
 const state = {
     currentStep: 1,
@@ -54,8 +117,10 @@ function setActiveClient(clientId) {
     // Pre-fill the wizard with client data
     const client = getActiveClient();
     if (client) {
-        document.getElementById('brandNiche').value = client.name + ' - ' + client.industry;
-        document.getElementById('targetAudience').value = client.audience || '';
+        var brandEl = document.getElementById('brandNiche');
+        var audEl = document.getElementById('targetAudience');
+        if (brandEl) brandEl.value = client.name + ' - ' + client.industry;
+        if (audEl) audEl.value = client.audience || '';
 
         // Pre-select client channels
         state.selectedChannels = [...(client.channels || [])];
@@ -505,7 +570,8 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     const client = getActiveClient();
     const industry = client ? (client.industry || brand) : brand;
     const clientNotes = client ? (client.notes || '') : '';
-    const reference = document.getElementById('contentReference').value || '';
+    var refEl = document.getElementById('contentReference');
+    const reference = refEl ? refEl.value || '' : '';
 
     // Build dynamic hashtags based on brand/industry
     const brandTag = '#' + brand.replace(/[^a-zA-Z0-9]/g, '');
@@ -1001,7 +1067,7 @@ function selectStock(item) {
                 url: item.dataset.full,
                 thumb: item.querySelector('img') ? item.querySelector('img').src : item.dataset.full,
                 alt: item.dataset.alt || stockState.query,
-                source: 'Unsplash',
+                source: item.dataset.source || 'Pexels',
                 savedAt: new Date().toISOString()
             });
             showToast('Saved to ' + client.name + '\'s asset library ✓', 'success');
@@ -1033,10 +1099,11 @@ function updateAssetBadge() {
     var client = getActiveClient();
     if (!client) { badge.style.display = 'none'; return; }
     var assets = getClientAssets(client.id);
-    var count = Object.keys(assets).filter(function(k){ return k !== 'stock' && k !== 'extra' && k !== 'autoPulled'; }).length
+    var count = Object.keys(assets).filter(function(k){ return k !== 'stock' && k !== 'extra' && k !== 'autoPulled' && k !== 'socialPulled'; }).length
               + ((assets.stock && assets.stock.length) || 0)
               + ((assets.extra && assets.extra.length) || 0)
-              + ((assets.autoPulled && assets.autoPulled.length) || 0);
+              + ((assets.autoPulled && assets.autoPulled.length) || 0)
+              + ((assets.socialPulled && assets.socialPulled.length) || 0);
     if (count > 0) { badge.textContent = count; badge.style.display = 'inline-flex'; }
     else { badge.style.display = 'none'; }
 }
@@ -1493,7 +1560,7 @@ function renderAutoPullSection(client) {
     var pulled = assets.autoPulled || [];
     var socialPulled = assets.socialPulled || [];
     var hasWebsite = !!(client.website && client.website.trim().length > 8 && client.website.includes('.'));
-    var hasChannels = !!(client.channels && client.channels.trim().length > 0);
+    var hasChannels = !!(client.channels && (Array.isArray(client.channels) ? client.channels.length > 0 : client.channels.trim().length > 0));
 
     var html = '<div class="cg-autopull-wrap">';
 
@@ -1625,7 +1692,7 @@ function triggerSocialPull() {
     var client = getActiveClient();
     if (!client) { showToast('Select a client first', 'error'); return; }
 
-    var channels = (client.channels || '').split(',').map(function(c){ return c.trim().toLowerCase(); }).filter(Boolean);
+    var channels = Array.isArray(client.channels) ? client.channels.map(function(c){ return c.trim().toLowerCase(); }) : (client.channels || '').split(',').map(function(c){ return c.trim().toLowerCase(); }).filter(Boolean);
     if (channels.length === 0) { showToast('No social channels set for this client. Edit the client profile first.', 'info'); return; }
 
     // Build social profile URLs from client name + channels
