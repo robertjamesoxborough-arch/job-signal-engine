@@ -4197,3 +4197,84 @@
 .cg-content-suggested-image:hover .cg-content-img-actions {
     opacity: 1;
 }
+
+/* ── Brand Intelligence Panel ── */
+.cg-bi-empty { text-align: center; padding: 2rem; color: var(--gray-500); }
+.cg-bi-empty p { margin-bottom: 1rem; }
+
+.cg-bi-voice { margin-bottom: 1.25rem; }
+.cg-bi-voice h3, .cg-bi-strategies h3, .cg-bi-products h3, .cg-bi-signals h3, .cg-bi-proof h3 {
+    font-size: 0.875rem; font-weight: 600; color: var(--gray-700); margin-bottom: 0.5rem;
+    text-transform: uppercase; letter-spacing: 0.04em;
+}
+.cg-bi-voice-grid {
+    display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;
+}
+.cg-bi-voice-item {
+    background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px;
+    padding: 0.5rem 0.75rem; display: flex; flex-direction: column; gap: 0.15rem;
+}
+.cg-bi-label { font-size: 0.7rem; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; }
+.cg-bi-value { font-size: 0.875rem; font-weight: 600; color: var(--gray-800); text-transform: capitalize; }
+
+.cg-bi-keywords { margin-top: 0.5rem; display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+.cg-bi-keyword {
+    background: rgba(59, 130, 246, 0.08); color: #3B82F6; border: 1px solid rgba(59, 130, 246, 0.2);
+    padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;
+}
+
+.cg-bi-strategies { margin-bottom: 1.25rem; }
+.cg-bi-strategy {
+    display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0;
+    border-bottom: 1px solid var(--gray-100); font-size: 0.85rem;
+}
+.cg-bi-strategy:last-child { border-bottom: none; }
+.cg-bi-strategy-type {
+    background: rgba(16, 185, 129, 0.1); color: var(--emerald-500); border: 1px solid rgba(16, 185, 129, 0.2);
+    padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 600;
+    text-transform: uppercase; white-space: nowrap;
+}
+
+.cg-bi-products { margin-bottom: 1.25rem; }
+.cg-bi-products-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;
+}
+.cg-bi-product-card {
+    background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 10px;
+    overflow: hidden; transition: box-shadow 0.2s;
+}
+.cg-bi-product-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+.cg-bi-product-img {
+    width: 100%; height: 120px; object-fit: cover; display: block;
+}
+.cg-bi-product-info { padding: 0.6rem; }
+.cg-bi-product-name { font-size: 0.8rem; font-weight: 600; color: var(--gray-800); margin-bottom: 0.2rem; }
+.cg-bi-product-price { font-size: 0.8rem; font-weight: 600; color: var(--emerald-500); margin-bottom: 0.3rem; }
+.cg-bi-product-badge {
+    display: inline-block; padding: 1px 8px; border: 1px solid; border-radius: 10px;
+    font-size: 0.65rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
+    margin-bottom: 0.2rem;
+}
+.cg-bi-product-reason { font-size: 0.7rem; color: var(--gray-500); margin-top: 0.2rem; line-height: 1.3; }
+
+.cg-bi-signals { margin-bottom: 1.25rem; display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; }
+.cg-bi-signals h3 { width: 100%; }
+.cg-bi-signal {
+    background: rgba(245, 158, 11, 0.1); color: #D97706; border: 1px solid rgba(245, 158, 11, 0.2);
+    padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;
+}
+
+.cg-bi-proof { margin-bottom: 1rem; }
+.cg-bi-proof-item {
+    font-size: 0.85rem; color: var(--gray-600); padding: 0.3rem 0;
+    border-bottom: 1px solid var(--gray-100); font-style: italic;
+}
+
+/* ── Content Strategy Badge on cards ── */
+.cg-content-strategy {
+    background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.15);
+    border-radius: 8px; padding: 0.45rem 0.75rem; margin-bottom: 0.75rem;
+    font-size: 0.8rem; color: var(--gray-600); line-height: 1.4;
+}
+.cg-content-strategy strong { color: var(--gray-700); }
+.cg-strategy-icon { font-size: 0.85rem; }

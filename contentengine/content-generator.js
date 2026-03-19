@@ -557,24 +557,15 @@ function toggleChannel(card) {
 
 // ============ AI CONTENT GENERATION ============
 function generateContent() {
-    const brand = document.getElementById('brandNiche').value || 'Premium Brand';
-    const audience = document.getElementById('targetAudience').value || 'Target audience';
-    const qty = parseInt(document.getElementById('contentQty').value) || 5;
+    var brandEl = document.getElementById('brandNiche');
+    var audEl = document.getElementById('targetAudience');
+    const brand = brandEl ? brandEl.value || 'Premium Brand' : 'Premium Brand';
+    const audience = audEl ? audEl.value || 'Target audience' : 'Target audience';
+    const qty = parseInt((document.getElementById('contentQty') || {}).value) || 5;
     const channels = state.selectedChannels.length > 0 ? state.selectedChannels : ['instagram', 'linkedin'];
     const tone = state.selectedTone || 'professional';
     const goal = state.selectedGoal || 'engagement';
     const types = state.selectedTypes.length > 0 ? state.selectedTypes : ['post', 'carousel', 'reel'];
-
-    // Auto-scrape product page URL if provided and client has no products yet
-    var ppUrlEl = document.getElementById('productPageUrl');
-    var ppUrl = ppUrlEl ? ppUrlEl.value.trim() : '';
-    if (ppUrl) {
-        var client = getActiveClient();
-        var needsScrape = !client || !client.siteData || !client.siteData.products || client.siteData.products.length === 0;
-        if (needsScrape) {
-            scrapeProductPage(ppUrl);
-        }
-    }
 
     // Show loading
     const loading = document.getElementById('aiLoading');
@@ -583,44 +574,84 @@ function generateContent() {
     contentList.innerHTML = '';
 
     const statuses = [
-        'Analyzing your brand voice and audience...',
-        'Researching trending content in your niche...',
-        'Crafting platform-specific copy...',
-        'Optimizing hashtags and keywords...',
-        'Generating visual concepts...',
-        'Fine-tuning engagement hooks...',
-        'Finalizing content calendar...'
+        'Deep-crawling website for products & brand voice...',
+        'Analysing product catalog and pricing...',
+        'Extracting brand language and tone...',
+        'Identifying bestsellers and trending products...',
+        'Picking smart products to promote...',
+        'Crafting platform-specific ad copy...',
+        'Building product-focused content...',
+        'Optimizing hooks and CTAs...'
     ];
 
     let statusIdx = 0;
     const statusInterval = setInterval(() => {
         statusIdx = (statusIdx + 1) % statuses.length;
-        document.getElementById('aiLoadingStatus').textContent = statuses[statusIdx];
+        var statusEl = document.getElementById('aiLoadingStatus');
+        if (statusEl) statusEl.textContent = statuses[statusIdx];
     }, 800);
 
-    // Animate progress bar
     const fill = document.getElementById('aiProgressFill');
-    fill.style.width = '0%';
+    if (fill) fill.style.width = '0%';
     let progress = 0;
     const progressInterval = setInterval(() => {
-        progress += Math.random() * 15;
+        progress += Math.random() * 10;
         if (progress > 95) progress = 95;
-        fill.style.width = progress + '%';
+        if (fill) fill.style.width = progress + '%';
     }, 400);
 
-    // Generate content after animation
-    setTimeout(() => {
-        clearInterval(statusInterval);
-        clearInterval(progressInterval);
-        fill.style.width = '100%';
+    // Auto-scrape product page URL if provided
+    var ppUrlEl = document.getElementById('productPageUrl');
+    var ppUrl = ppUrlEl ? ppUrlEl.value.trim() : '';
+    if (ppUrl) {
+        var ppClient = getActiveClient();
+        var needsScrape = !ppClient || !ppClient.siteData || !ppClient.siteData.products || ppClient.siteData.products.length === 0;
+        if (needsScrape) {
+            scrapeProductPage(ppUrl);
+        }
+    }
 
-        state.generatedContent = generateContentPieces(brand, audience, qty, channels, tone, goal, types);
+    // Try brand intelligence scan first (deep crawl)
+    var client = getActiveClient();
+    var hasIntelligence = client && client.intelligence && client.intelligence.products && client.intelligence.products.length > 0;
+    var hasWebsite = client && client.website && client.website.trim().length > 5;
 
-        setTimeout(() => {
-            loading.style.display = 'none';
-            renderContent();
-        }, 500);
-    }, 3500);
+    if (hasWebsite && !hasIntelligence) {
+        // Run deep crawl then generate
+        runBrandIntelligence(client.id, function(intelligence) {
+            clearInterval(statusInterval);
+            clearInterval(progressInterval);
+            if (fill) fill.style.width = '100%';
+
+            if (intelligence) {
+                var msg = intelligence.products.length + ' products found';
+                if (intelligence.brandVoice.tone !== 'neutral') msg += ', brand voice: ' + intelligence.brandVoice.tone;
+                if (intelligence.popularSignals.length > 0) msg += ', ' + intelligence.popularSignals.length + ' popularity signals';
+                showToast('Brand intelligence: ' + msg, 'success');
+            }
+
+            state.generatedContent = generateContentPieces(brand, audience, qty, channels, tone, goal, types);
+
+            setTimeout(function() {
+                loading.style.display = 'none';
+                renderContent();
+            }, 500);
+        });
+    } else {
+        // Already have intelligence or no website — generate immediately
+        setTimeout(function() {
+            clearInterval(statusInterval);
+            clearInterval(progressInterval);
+            if (fill) fill.style.width = '100%';
+
+            state.generatedContent = generateContentPieces(brand, audience, qty, channels, tone, goal, types);
+
+            setTimeout(function() {
+                loading.style.display = 'none';
+                renderContent();
+            }, 500);
+        }, 2500);
+    }
 }
 
 function generateContentPieces(brand, audience, qty, channels, tone, goal, types) {
@@ -661,20 +692,41 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     var ppEl = document.getElementById('productPageUrl');
     var productPageUrl = ppEl ? ppEl.value || '' : '';
 
-    // Get scraped website data (products, description, etc.)
+    // Get brand intelligence data (deep crawl) OR fall back to legacy siteData
+    var intelligence = (client && client.intelligence) ? client.intelligence : null;
     var siteData = (client && client.siteData) ? client.siteData : { products: [], description: '', tagline: '', prices: [], categories: [], links: [] };
-    var hasProducts = siteData.products.length > 0;
-    var siteDesc = siteData.description || '';
-    var products = siteData.products || [];
+
+    // Use intelligence-picked products (sorted by promotion score) if available
+    var products;
+    if (intelligence && intelligence.products && intelligence.products.length > 0) {
+        products = pickProductsForGoal(intelligence, goal, 20);
+    } else {
+        products = siteData.products || [];
+    }
+    var hasProducts = products.length > 0;
+    var siteDesc = (intelligence ? intelligence.siteDescription : siteData.description) || '';
+
+    // Brand voice from intelligence
+    var brandVoice = (intelligence && intelligence.brandVoice) ? intelligence.brandVoice : { tone: 'neutral', keywords: [], phrases: [] };
+    var voiceTone = brandVoice.tone || 'neutral';
+
+    // Content strategies from intelligence
+    var strategies = intelligence ? generateContentStrategies(intelligence, brandName, goal) : [];
+    var hasUrgency = strategies.some(function(s) { return s.type === 'urgency'; });
+    var hasSocialProof = strategies.some(function(s) { return s.type === 'social-proof'; });
+    var hasNewArrivals = strategies.some(function(s) { return s.type === 'launch-hype'; });
+
+    // Price range info from intelligence
+    var priceRange = (intelligence && intelligence.priceRange) ? intelligence.priceRange : { min: 0, max: 0, currency: '' };
 
     // Get auto-pulled images for referencing in content
     var assets = client ? getClientAssets(client.id) : {};
-    var pulledImages = (assets.autoPulled || []).filter(function(img) { return img.url; });
+    var pulledImages = (intelligence && intelligence.images) ? intelligence.images : (assets.autoPulled || []).filter(function(img) { return img.url; });
 
     // Helper to get a product name for templates
     function prod(idx) {
-        if (products.length === 0) return industry;
-        return products[idx % products.length].name || industry;
+        if (products.length === 0) return whatTheySell;
+        return products[idx % products.length].name || whatTheySell;
     }
     function prodDesc(idx) {
         if (products.length === 0) return '';
@@ -683,6 +735,14 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     function prodPrice(idx) {
         if (products.length === 0) return '';
         return products[idx % products.length].price || '';
+    }
+    function prodReason(idx) {
+        if (products.length === 0) return '';
+        return products[idx % products.length]._promotionReason || '';
+    }
+    function prodCategory(idx) {
+        if (products.length === 0) return 'standard';
+        return products[idx % products.length]._promotionCategory || 'standard';
     }
     function prodImg(idx) {
         if (products.length === 0 && pulledImages.length > 0) return pulledImages[idx % pulledImages.length].url;
@@ -723,17 +783,33 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     };
     const baseHashtags = brandTag + ' ' + industryTag + ' ' + (goalTags[goal] || '#Growth #Strategy');
 
-    // Product-specific hashtags
+    // Product-specific hashtags — use intelligence keywords if available
     var productTags = hasProducts ? ' #' + prod(0).replace(/[^a-zA-Z0-9]/g, '') : '';
+    if (brandVoice.keywords && brandVoice.keywords.length > 0) {
+        var voiceTags = brandVoice.keywords.slice(0, 3).map(function(k) { return '#' + k.charAt(0).toUpperCase() + k.slice(1); }).join(' ');
+        baseHashtags += ' ' + voiceTags;
+    }
 
-    // Build content templates — product-aware when site data exists
+    // Voice-matched hooks based on detected brand tone
+    var hooks = {
+        luxury: ['Elevate your everyday', 'Designed for those who appreciate the finer details', 'Where quality meets intention'],
+        casual: ['You\'re gonna love this one', 'Real talk — this is the one', 'Okay but have you seen this though'],
+        bold: ['This changes everything', 'Not for everyone. That\'s the point', 'The only one that matters'],
+        warm: ['Made with love, for you', 'There\'s a story behind every piece', 'Welcome to the family'],
+        tech: ['Smarter by design', 'Built for performance', 'The future of ' + whatTheySell],
+        neutral: ['Discover what\'s new', 'See what everyone\'s talking about', 'Something special for you']
+    };
+    var voiceHooks = hooks[voiceTone] || hooks.neutral;
+
+    // Build content templates — intelligence-powered when data exists
     const contentTemplates = {
         post: hasProducts ? [
             {
-                title: 'Product Spotlight — ' + prod(0),
-                text: 'Meet ' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '.\n\n' + (prodDesc(0) || brandContext) + '\n\nThis is one of our bestsellers and here\'s why people love it:\n\n• Designed for real everyday use\n• Quality you can see and feel\n• Perfect for anyone who values ' + industry.toLowerCase() + '\n\nTap the link in bio to shop ' + prod(0) + ' now.' + (prodImg(0) ? '\n\n[USE IMAGE: ' + prodImg(0) + ']' : ''),
+                title: (prodCategory(0) === 'hero' ? 'Bestseller Spotlight' : prodCategory(0) === 'new' ? 'Just Dropped' : 'Product Spotlight') + ' — ' + prod(0),
+                text: voiceHooks[0] + '.\n\nMeet ' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '.\n\n' + (prodDesc(0) || brandContext) + '\n\n' + (prodReason(0) ? '💡 Why we\'re promoting this: ' + prodReason(0) + '\n\n' : '') + (voiceTone === 'luxury' ? 'Crafted for those who settle for nothing less.' : voiceTone === 'casual' ? 'Trust us — you need this in your life.' : voiceTone === 'bold' ? 'This isn\'t just ' + whatTheySell + '. It\'s a statement.' : 'One of our most-loved products for a reason.') + '\n\nTap the link in bio to shop ' + prod(0) + ' now.' + (prodImg(0) ? '\n\n[USE IMAGE: ' + prodImg(0) + ']' : ''),
                 hashtags: baseHashtags + ' #ShopNow' + productTags,
-                suggestedImage: prodImg(0)
+                suggestedImage: prodImg(0),
+                _strategy: prodReason(0)
             },
             {
                 title: 'Product In Action — ' + prod(1),
@@ -870,22 +946,25 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
         ],
         ad: hasProducts ? [
             {
-                title: 'Product Ad — ' + prod(0),
-                text: 'AD CREATIVE\n\nHeadline: "' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '"\n\nPrimary text: "' + (prodDesc(0) || brandContext) + '\n\n' + (uspLine ? uspLine + '\n\n' : '') + 'Shop now at ' + brandName + '."\n\nCTA: Shop Now\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\n\n[USE IMAGE: ' + (prodImg(0) || 'Product shot of ' + prod(0)) + ']\n\nVariant B Headline: "Meet your new favourite ' + whatTheySell + ' — ' + prod(0) + '"\nVariant C Headline: "' + prod(0) + '. Finally, ' + whatTheySell + ' done right."',
+                title: (prodCategory(0) === 'hero' ? '⭐ Bestseller' : prodCategory(0) === 'new' ? '🆕 New Drop' : prodCategory(0) === 'urgency' ? '🔥 Limited' : '📦 Product') + ' Ad — ' + prod(0),
+                text: 'AD CREATIVE\n\n📊 WHY THIS PRODUCT: ' + (prodReason(0) || 'Featured product from ' + brandName) + '\n\nHeadline: "' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '"\n\nPrimary text: "' + voiceHooks[0] + '.\n\n' + (prodDesc(0) || brandContext) + '\n\n' + (uspLine ? uspLine + '\n\n' : '') + 'Shop now at ' + brandName + '."\n\nCTA: Shop Now\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\nBrand voice: ' + voiceTone + '\n\n[USE IMAGE: ' + (prodImg(0) || 'Product shot of ' + prod(0)) + ']\n\nVariant B Headline: "' + voiceHooks[1] + ' — ' + prod(0) + '"\nVariant C Headline: "' + prod(0) + '. ' + voiceHooks[2] + '."',
                 hashtags: '',
-                suggestedImage: prodImg(0)
+                suggestedImage: prodImg(0),
+                _strategy: prodReason(0)
             },
             {
                 title: 'Collection Ad — ' + brandName,
-                text: 'AD CREATIVE\n\nHeadline: "Shop ' + brandName + ' — ' + whatTheySell.charAt(0).toUpperCase() + whatTheySell.slice(1) + ' You\'ll Love"\n\nPrimary text: "' + brandContext + '\n\nFeaturing: ' + products.slice(0, 3).map(function(p){return p.name + (p.price ? ' (' + p.price + ')' : '');}).join(', ') + (products.length > 3 ? ' and more' : '') + '.\n\n' + (uspLine ? uspLine + '\n\n' : '') + 'Shop now."\n\nCTA: Shop Now\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\nFormat: Carousel ad — one product per card with price\n\n' + products.slice(0, 4).map(function(p, i){ return 'Card ' + (i+1) + ': ' + p.name + (p.price ? ' — ' + p.price : '') + (p.image ? '\n  [IMAGE: ' + p.image + ']' : ''); }).join('\n') + '\n\nVariant B: Dynamic product ad pulling from catalogue',
+                text: 'AD CREATIVE\n\n📊 STRATEGY: Show product range — ' + products.length + ' products found, featuring top ' + Math.min(4, products.length) + ' by promotion score\n\nHeadline: "Shop ' + brandName + ' — ' + whatTheySell.charAt(0).toUpperCase() + whatTheySell.slice(1) + ' You\'ll Love"\n\nPrimary text: "' + brandContext + '\n\nFeaturing:\n' + products.slice(0, 4).map(function(p){ return '• ' + p.name + (p.price ? ' (' + p.price + ')' : '') + (p._promotionCategory && p._promotionCategory !== 'standard' ? ' [' + p._promotionCategory + ']' : ''); }).join('\n') + (products.length > 4 ? '\n+ ' + (products.length - 4) + ' more' : '') + '\n\n' + (uspLine ? uspLine + '\n\n' : '') + 'Shop now."\n\nCTA: Shop Now\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\nFormat: Carousel ad — one product per card with price\n\n' + products.slice(0, 4).map(function(p, i){ return 'Card ' + (i+1) + ': ' + p.name + (p.price ? ' — ' + p.price : '') + (p._promotionReason ? ' (' + p._promotionReason + ')' : '') + (p.image ? '\n  [IMAGE: ' + p.image + ']' : ''); }).join('\n'),
                 hashtags: '',
-                suggestedImage: prodImg(0)
+                suggestedImage: prodImg(0),
+                _strategy: products.length + ' products found — top picks sorted by promotion potential'
             },
             {
-                title: 'Bestseller Ad — ' + prod(0),
-                text: 'AD CREATIVE\n\nHeadline: "Our #1 Bestseller — ' + prod(0) + '"\n\nPrimary text: "See why everyone\'s talking about ' + prod(0) + '.\n\n' + (prodDesc(0) || 'Premium ' + whatTheySell + ' from ' + brandName + '.') + (prodPrice(0) ? '\n\n' + prodPrice(0) + ' — shop now before it sells out.' : '\n\nShop now before it sells out.') + '"\n\nCTA: Shop Now\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\n\n[USE IMAGE: ' + (prodImg(0) || 'Lifestyle shot featuring ' + prod(0)) + ']\n\nVariant B Headline: "Don\'t miss ' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '"\nVariant C Headline: "' + brandName + ' — ' + prod(0) + ' is back in stock"',
+                title: (prodCategory(0) === 'hero' ? '⭐ Proven Winner' : 'Smart Pick') + ' Ad — ' + prod(0),
+                text: 'AD CREATIVE\n\n📊 WHY THIS PRODUCT: ' + (prodReason(0) || 'Top-ranked product by promotion score') + '\n' + (priceRange.max > 0 ? '💰 Price context: ' + priceRange.currency + priceRange.min + '–' + priceRange.currency + priceRange.max + ' range\n' : '') + '\nHeadline: "' + (prodCategory(0) === 'hero' ? 'Our #1 Bestseller' : hasUrgency ? 'Selling Fast' : hasSocialProof ? 'See Why Everyone Loves This' : 'Meet Your New Favourite') + ' — ' + prod(0) + '"\n\nPrimary text: "' + (prodDesc(0) || 'Premium ' + whatTheySell + ' from ' + brandName + '.') + (prodPrice(0) ? '\n\n' + prodPrice(0) + ' — shop now.' : '\n\nShop now.') + '"\n\nCTA: Shop Now\n\nTarget audience: ' + audShort + '\nPlacement: Feed, Stories, Reels\nBrand voice: ' + voiceTone + ' — ' + (brandVoice.sentenceStyle || 'medium') + ' sentences\n\n[USE IMAGE: ' + (prodImg(0) || 'Lifestyle shot featuring ' + prod(0)) + ']\n\nVariant B: "' + voiceHooks[2] + ' — ' + prod(0) + (prodPrice(0) ? ' — ' + prodPrice(0) : '') + '"\nVariant C: "' + brandName + ' — ' + prod(0) + (hasUrgency ? ' (limited stock)' : prodCategory(0) === 'hero' ? ' (back in stock)' : '') + '"',
                 hashtags: '',
-                suggestedImage: prodImg(0)
+                suggestedImage: prodImg(0),
+                _strategy: prodReason(0)
             }
         ] : [
             {
@@ -925,7 +1004,9 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             hashtags: template.hashtags,
             status: 'draft',
             score: computeContentScore(type, channel, goal),
-            suggestedImage: template.suggestedImage || ''
+            suggestedImage: template.suggestedImage || '',
+            _strategy: template._strategy || '',
+            _voiceTone: voiceTone
         });
     }
 
@@ -982,6 +1063,7 @@ function renderContent() {
                 </div>
             </div>
             <h3 class="cg-content-title">${piece.title}</h3>
+            ${piece._strategy ? '<div class="cg-content-strategy"><span class="cg-strategy-icon">📊</span> <strong>Why this:</strong> ' + piece._strategy + (piece._voiceTone && piece._voiceTone !== 'neutral' ? ' · Voice: ' + piece._voiceTone : '') + '</div>' : ''}
             ${piece.suggestedImage ? '<div class="cg-content-suggested-image"><img src="' + piece.suggestedImage + '" alt="Suggested product image" loading="lazy" onerror="this.parentElement.style.display=\'none\'"><div class="cg-content-img-actions"><button class="cg-btn cg-btn-sm cg-btn-primary" onclick="downloadAutoPulledImage(\'' + piece.suggestedImage + '\', \'' + piece.title.replace(/'/g, '') + '\')">Download Image</button></div></div>' : ''}
             <div class="cg-content-text" id="text-${piece.id}">
                 <pre>${piece.text}</pre>
@@ -1904,6 +1986,470 @@ function renderAutoPullSection(client) {
 
     html += '</div>';
     el.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BRAND INTELLIGENCE ENGINE
+// Deep-crawls websites, analyses brand voice, researches competitors,
+// picks smart products to promote, and generates strategic content.
+// ═══════════════════════════════════════════════════════════════════════
+
+var CORS_PROXIES = [
+    'https://api.allorigins.win/raw?url=',
+    'https://corsproxy.io/?',
+    'https://api.codetabs.com/v1/proxy?quest='
+];
+
+// Fetch a URL through CORS proxies with fallback
+function fetchViaProxy(url, timeoutMs) {
+    timeoutMs = timeoutMs || 10000;
+    var idx = 0;
+    function tryNext() {
+        if (idx >= CORS_PROXIES.length) return Promise.reject(new Error('All proxies failed'));
+        var proxy = CORS_PROXIES[idx++];
+        return fetch(proxy + encodeURIComponent(url), {
+            signal: AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined
+        }).then(function(res) {
+            return res.ok ? res.text() : Promise.reject();
+        }).catch(function() { return tryNext(); });
+    }
+    return tryNext();
+}
+
+// ── DEEP WEBSITE CRAWLER ──
+// Crawls the main site AND follows shop/collection/product links
+// to build a complete product catalog + brand voice profile
+function deepCrawlWebsite(websiteUrl, callback) {
+    if (!websiteUrl) { callback(null); return; }
+    if (!websiteUrl.startsWith('http')) websiteUrl = 'https://' + websiteUrl;
+
+    var origin = '';
+    try { origin = new URL(websiteUrl).origin; } catch(e) { callback(null); return; }
+
+    var intelligence = {
+        products: [],
+        brandVoice: { tone: '', keywords: [], phrases: [], sentenceStyle: '', emotionalTone: '' },
+        siteDescription: '',
+        tagline: '',
+        allCopy: [],
+        categories: [],
+        priceRange: { min: Infinity, max: 0, currency: '' },
+        popularSignals: [],
+        images: [],
+        shopLinks: [],
+        socialProof: [],
+        competitorHints: []
+    };
+
+    var crawledUrls = {};
+    var pendingCrawls = 0;
+    var maxPages = 8;
+    var pagesCrawled = 0;
+
+    function processPage(html, pageUrl, isMain) {
+        var siteData = extractSiteData(html, pageUrl);
+        var pageImages = extractImagesFromHtml(html, pageUrl);
+
+        // Merge products (dedup by name)
+        var existingNames = {};
+        intelligence.products.forEach(function(p) { existingNames[p.name.toLowerCase()] = true; });
+        siteData.products.forEach(function(p) {
+            if (!existingNames[p.name.toLowerCase()]) {
+                intelligence.products.push(p);
+                existingNames[p.name.toLowerCase()] = true;
+            }
+        });
+
+        // Merge images
+        var existingUrls = {};
+        intelligence.images.forEach(function(img) { existingUrls[img.url] = true; });
+        pageImages.forEach(function(img) {
+            if (!existingUrls[img.url] && intelligence.images.length < 30) {
+                intelligence.images.push(img);
+                existingUrls[img.url] = true;
+            }
+        });
+
+        if (isMain) {
+            intelligence.siteDescription = siteData.description || '';
+            intelligence.tagline = siteData.tagline || '';
+        }
+
+        siteData.categories.forEach(function(cat) {
+            if (intelligence.categories.indexOf(cat) === -1) intelligence.categories.push(cat);
+        });
+
+        var bodyText = extractVisibleText(html);
+        if (bodyText) intelligence.allCopy.push(bodyText);
+
+        extractSocialProof(html, intelligence);
+        extractPopularitySignals(html, intelligence);
+
+        // Find and crawl shop sub-pages
+        if (isMain) {
+            var shopLinks = findShopLinks(html, origin);
+            intelligence.shopLinks = shopLinks;
+            shopLinks.slice(0, maxPages - 1).forEach(function(link) {
+                if (!crawledUrls[link.url]) {
+                    crawledUrls[link.url] = true;
+                    pendingCrawls++;
+                    pagesCrawled++;
+                    fetchViaProxy(link.url, 8000).then(function(subHtml) {
+                        processPage(subHtml, link.url, false);
+                    }).catch(function() {}).finally(function() {
+                        pendingCrawls--;
+                        if (pendingCrawls === 0) finishCrawl();
+                    });
+                }
+            });
+        }
+    }
+
+    function finishCrawl() {
+        intelligence.brandVoice = analyseBrandVoice(intelligence.allCopy);
+
+        intelligence.products.forEach(function(p) {
+            if (p.price) {
+                var num = parseFloat(p.price.replace(/[^0-9.]/g, ''));
+                if (!isNaN(num) && num > 0) {
+                    if (num < intelligence.priceRange.min) intelligence.priceRange.min = num;
+                    if (num > intelligence.priceRange.max) intelligence.priceRange.max = num;
+                    var curr = p.price.match(/[\$\£\€]/);
+                    if (curr) intelligence.priceRange.currency = curr[0];
+                }
+            }
+        });
+        if (intelligence.priceRange.min === Infinity) intelligence.priceRange.min = 0;
+
+        categoriseProducts(intelligence);
+        callback(intelligence);
+    }
+
+    crawledUrls[websiteUrl] = true;
+    pendingCrawls++;
+    pagesCrawled++;
+    fetchViaProxy(websiteUrl, 10000).then(function(html) {
+        processPage(html, websiteUrl, true);
+    }).catch(function() {
+        callback(null);
+        return;
+    }).finally(function() {
+        pendingCrawls--;
+        if (pendingCrawls === 0) finishCrawl();
+    });
+}
+
+// Find shop/collection links on a page
+function findShopLinks(html, origin) {
+    var links = [];
+    var seen = {};
+    var pattern = /<a[^>]+href=["']([^"'#]+)["'][^>]*>/gi;
+    var match;
+    while ((match = pattern.exec(html)) !== null && links.length < 15) {
+        var href = match[1];
+        var fullUrl = resolveUrl(href, origin);
+        if (!fullUrl) continue;
+        if (seen[fullUrl]) continue;
+        if (/\/(shop|store|products?|collections?|catalog|category|categories|all|new-arrivals|best-sellers|sale)\b/i.test(fullUrl)) {
+            seen[fullUrl] = true;
+            var label = href.split('/').filter(Boolean).pop() || 'shop';
+            links.push({ url: fullUrl, label: label.replace(/[-_]/g, ' ') });
+        }
+    }
+    return links;
+}
+
+// Extract visible text from HTML for voice analysis
+function extractVisibleText(html) {
+    var cleaned = html
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<nav[\s\S]*?<\/nav>/gi, '')
+        .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+        .replace(/<header[\s\S]*?<\/header>/gi, '');
+    var textParts = [];
+    var textPattern = /<(?:h[1-6]|p|span|div|li|a|td|blockquote)[^>]*>([^<]{10,500})<\//gi;
+    var m;
+    while ((m = textPattern.exec(cleaned)) !== null && textParts.length < 200) {
+        var t = m[1].trim().replace(/&[a-z]+;/gi, ' ').replace(/\s+/g, ' ');
+        if (t.length > 10 && !/^[\d\s\.\,\$\£\€]+$/.test(t)) {
+            textParts.push(t);
+        }
+    }
+    return textParts.join('. ');
+}
+
+// Extract social proof (reviews, testimonials)
+function extractSocialProof(html, intelligence) {
+    var reviewPattern = /(\d+)\s*(?:reviews?|ratings?|stars?)/gi;
+    var rm;
+    while ((rm = reviewPattern.exec(html)) !== null) {
+        var count = parseInt(rm[1]);
+        if (count > 3 && count < 100000) {
+            intelligence.socialProof.push({ type: 'reviews', count: count, text: rm[0] });
+        }
+    }
+    var quotePattern = /<(?:blockquote|q|div|p|span)[^>]*class=["'][^"']*(?:testimonial|review|quote)[^"']*["'][^>]*>([^<]{20,300})<\//gi;
+    var qm;
+    while ((qm = quotePattern.exec(html)) !== null && intelligence.socialProof.length < 10) {
+        intelligence.socialProof.push({ type: 'testimonial', text: qm[1].trim() });
+    }
+}
+
+// Extract popularity signals (bestseller, trending, sold-out, etc.)
+function extractPopularitySignals(html, intelligence) {
+    var patterns = [
+        { regex: /best\s*sell(?:er|ing)/gi, signal: 'bestseller' },
+        { regex: /most\s*popular/gi, signal: 'most-popular' },
+        { regex: /trending/gi, signal: 'trending' },
+        { regex: /sold\s*out/gi, signal: 'sold-out' },
+        { regex: /limited\s*(?:edition|stock|availability)/gi, signal: 'limited' },
+        { regex: /new\s*(?:arrival|in|drop)/gi, signal: 'new-arrival' },
+        { regex: /(?:customer|staff)\s*(?:favourite|favorite|pick)/gi, signal: 'staff-pick' },
+        { regex: /(?:back\s*in\s*stock|restocked)/gi, signal: 'restocked' }
+    ];
+    patterns.forEach(function(p) {
+        var m = html.match(p.regex);
+        if (m && m.length > 0) {
+            intelligence.popularSignals.push({ signal: p.signal, count: m.length });
+        }
+    });
+}
+
+// ── BRAND VOICE ANALYSER ──
+function analyseBrandVoice(copyChunks) {
+    var allText = copyChunks.join(' ');
+    if (!allText || allText.length < 50) {
+        return { tone: 'neutral', keywords: [], phrases: [], sentenceStyle: 'medium', emotionalTone: 'balanced' };
+    }
+
+    var words = allText.toLowerCase().replace(/[^a-z\s'-]/g, '').split(/\s+/).filter(function(w) { return w.length > 3; });
+
+    var stopWords = ['this','that','with','from','your','have','been','will','would','could','should','their','they','them','what','when','where','which','while','about','after','before','between','through','under','over','into','than','then','also','just','more','most','some','such','only','very','each','both','here','there','these','those','other','made','make','like','back','even','well','much','many','being','were','does','doing','done','come','take','give','keep','find','help','tell','look','want','good','know','long','work','call','part','time','life','year','home','hand','high','last','next','used','same','left','free','days','best','down','need','open','read','room','right','still','world'];
+    var freq = {};
+    words.forEach(function(w) {
+        if (stopWords.indexOf(w) === -1 && w.length > 3) {
+            freq[w] = (freq[w] || 0) + 1;
+        }
+    });
+
+    var keywords = Object.keys(freq).sort(function(a, b) { return freq[b] - freq[a]; }).slice(0, 20);
+
+    var luxuryWords = ['premium','luxury','exclusive','artisan','crafted','curated','bespoke','refined','elegant','exquisite','finest','heritage','timeless'];
+    var casualWords = ['awesome','cool','vibes','love','amazing','fun','fresh','real','honest','chill','easy','simple','friendly'];
+    var boldWords = ['bold','powerful','disrupt','fearless','unapologetic','statement','stand','rebel','fierce','audacious','daring'];
+    var warmWords = ['family','together','community','care','heart','soul','passion','personal','handmade','story','journey','believe'];
+    var techWords = ['innovative','cutting-edge','smart','automated','scalable','efficient','platform','solution','optimize'];
+
+    var scores = { luxury: 0, casual: 0, bold: 0, warm: 0, tech: 0 };
+    words.forEach(function(w) {
+        if (luxuryWords.indexOf(w) >= 0) scores.luxury++;
+        if (casualWords.indexOf(w) >= 0) scores.casual++;
+        if (boldWords.indexOf(w) >= 0) scores.bold++;
+        if (warmWords.indexOf(w) >= 0) scores.warm++;
+        if (techWords.indexOf(w) >= 0) scores.tech++;
+    });
+
+    var topTone = 'neutral';
+    var maxScore = 0;
+    Object.keys(scores).forEach(function(k) {
+        if (scores[k] > maxScore) { maxScore = scores[k]; topTone = k; }
+    });
+
+    var positiveWords = ['love','beautiful','perfect','amazing','wonderful','excellent','great','fantastic','brilliant','stunning','gorgeous'];
+    var urgentWords = ['now','today','hurry','limited','last','ending','fast','quick','instant','rush'];
+    var posCount = 0, urgCount = 0;
+    words.forEach(function(w) {
+        if (positiveWords.indexOf(w) >= 0) posCount++;
+        if (urgentWords.indexOf(w) >= 0) urgCount++;
+    });
+    var emotionalTone = 'balanced';
+    if (posCount > urgCount && posCount > 3) emotionalTone = 'aspirational';
+    if (urgCount > posCount && urgCount > 3) emotionalTone = 'urgent';
+
+    var sentences = allText.split(/[.!?]+/).filter(function(s) { return s.trim().length > 5; });
+    var avgLen = sentences.length > 0 ? sentences.reduce(function(sum, s) { return sum + s.split(/\s+/).length; }, 0) / sentences.length : 10;
+    var sentenceStyle = avgLen < 8 ? 'punchy' : avgLen < 15 ? 'medium' : 'descriptive';
+
+    var phrases = [];
+    for (var i = 0; i < words.length - 1; i++) {
+        var bigram = words[i] + ' ' + words[i+1];
+        phrases.push(bigram);
+    }
+    var phraseFreq = {};
+    phrases.forEach(function(p) { phraseFreq[p] = (phraseFreq[p] || 0) + 1; });
+    var topPhrases = Object.keys(phraseFreq)
+        .filter(function(p) { return phraseFreq[p] >= 2; })
+        .sort(function(a, b) { return phraseFreq[b] - phraseFreq[a]; })
+        .slice(0, 10);
+
+    return {
+        tone: topTone, keywords: keywords, phrases: topPhrases,
+        sentenceStyle: sentenceStyle, emotionalTone: emotionalTone,
+        toneScores: scores, wordCount: words.length
+    };
+}
+
+// ── SMART PRODUCT CATEGORISER ──
+function categoriseProducts(intelligence) {
+    var products = intelligence.products;
+    var signals = intelligence.popularSignals;
+
+    products.forEach(function(prod, idx) {
+        prod._promotionCategory = 'standard';
+        prod._promotionReason = '';
+        prod._promotionScore = 50;
+
+        var combined = ((prod.name || '') + ' ' + (prod.description || '')).toLowerCase();
+
+        if (/best\s*sell|most\s*popular|top\s*rated|#1|favourite|favorite/i.test(combined)) {
+            prod._promotionCategory = 'hero';
+            prod._promotionReason = 'Bestseller — push hard in ads';
+            prod._promotionScore = 95;
+        } else if (/new|just\s*(?:arrived|landed|dropped)|fresh|latest/i.test(combined)) {
+            prod._promotionCategory = 'new';
+            prod._promotionReason = 'New product — create buzz';
+            prod._promotionScore = 85;
+        } else if (/limited|exclusive|rare|special\s*edition|collab/i.test(combined)) {
+            prod._promotionCategory = 'urgency';
+            prod._promotionReason = 'Limited availability — use urgency';
+            prod._promotionScore = 90;
+        } else if (prod.price) {
+            var priceNum = parseFloat(prod.price.replace(/[^0-9.]/g, ''));
+            if (!isNaN(priceNum) && intelligence.priceRange.max > 0) {
+                if (priceNum >= intelligence.priceRange.max * 0.7) {
+                    prod._promotionCategory = 'premium';
+                    prod._promotionReason = 'Premium-priced — ideal for aspirational content';
+                    prod._promotionScore = 80;
+                } else if (priceNum <= intelligence.priceRange.min * 1.3 && intelligence.priceRange.min > 0) {
+                    prod._promotionCategory = 'entry';
+                    prod._promotionReason = 'Entry-price — great for first-time buyers';
+                    prod._promotionScore = 75;
+                }
+            }
+        }
+
+        if (prod.image) prod._promotionScore += 5;
+        if (prod.description && prod.description.length > 30) prod._promotionScore += 5;
+        if (idx < 3) {
+            prod._promotionScore += 10;
+            if (prod._promotionCategory === 'standard') {
+                prod._promotionCategory = 'featured';
+                prod._promotionReason = 'Featured on website — likely a key product';
+            }
+        }
+    });
+
+    products.sort(function(a, b) { return (b._promotionScore || 0) - (a._promotionScore || 0); });
+}
+
+// ── SMART PRODUCT PICKER ──
+function pickProductsForGoal(intelligence, goal, count) {
+    count = count || 5;
+    var products = intelligence.products;
+    if (products.length === 0) return [];
+
+    var picked = [];
+    var cats = { hero: [], premium: [], new: [], urgency: [], featured: [], entry: [], standard: [] };
+    products.forEach(function(p) {
+        var cat = p._promotionCategory || 'standard';
+        if (cats[cat]) cats[cat].push(p);
+    });
+
+    if (goal === 'sales' || goal === 'increase_revenue') {
+        picked = [].concat(cats.hero, cats.premium, cats.urgency, cats.entry);
+    } else if (goal === 'awareness' || goal === 'build_audience') {
+        picked = [].concat(cats.new, cats.urgency, cats.hero, cats.featured);
+    } else if (goal === 'engagement' || goal === 'community') {
+        picked = [].concat(cats.hero, cats.new, cats.entry, cats.featured, cats.premium);
+    } else if (goal === 'leads' || goal === 'generate_leads') {
+        picked = [].concat(cats.entry, cats.hero, cats.featured, cats.premium);
+    } else {
+        picked = [].concat(cats.hero, cats.featured, cats.new, cats.premium, cats.entry);
+    }
+    picked = picked.concat(cats.standard);
+
+    var seen = {};
+    picked = picked.filter(function(p) {
+        var key = p.name.toLowerCase();
+        if (seen[key]) return false;
+        seen[key] = true;
+        return true;
+    });
+    return picked.slice(0, count);
+}
+
+// ── CONTENT STRATEGIES from intelligence ──
+function generateContentStrategies(intelligence, brandName, goal) {
+    var strategies = [];
+    var signals = intelligence.popularSignals;
+    var proof = intelligence.socialProof;
+    var voice = intelligence.brandVoice;
+
+    if (signals.some(function(s) { return s.signal === 'bestseller'; })) {
+        strategies.push({ type: 'social-proof', reason: 'Bestseller badges detected — leverage social proof', priority: 1 });
+    }
+    if (signals.some(function(s) { return s.signal === 'new-arrival'; })) {
+        strategies.push({ type: 'launch-hype', reason: 'New arrivals found — create buzz', priority: 2 });
+    }
+    if (signals.some(function(s) { return s.signal === 'limited' || s.signal === 'sold-out'; })) {
+        strategies.push({ type: 'urgency', reason: 'Scarcity signals — use FOMO content', priority: 1 });
+    }
+    if (proof.length > 0) {
+        strategies.push({ type: 'ugc-testimonial', reason: proof.length + ' social proof elements found', priority: 2 });
+    }
+    if (voice.tone !== 'neutral') {
+        strategies.push({ type: 'voice-match', reason: 'Brand voice: ' + voice.tone + ' — match it in content', priority: 3 });
+    }
+    if (intelligence.priceRange.max > intelligence.priceRange.min * 3 && intelligence.priceRange.max > 0) {
+        strategies.push({ type: 'price-ladder', reason: 'Wide price range — use entry products to upsell', priority: 2 });
+    }
+    if (intelligence.categories.length >= 3) {
+        strategies.push({ type: 'category-spotlight', reason: intelligence.categories.length + ' categories — rotate focus', priority: 3 });
+    }
+
+    strategies.sort(function(a, b) { return a.priority - b.priority; });
+    return strategies;
+}
+
+// ── RUN FULL BRAND INTELLIGENCE SCAN ──
+function runBrandIntelligence(clientId, callback) {
+    var client = state.clients.find(function(c) { return c.id === clientId; });
+    if (!client) { callback(null); return; }
+
+    var url = (client.website || '').trim();
+    if (!url) { callback(null); return; }
+
+    deepCrawlWebsite(url, function(intelligence) {
+        if (!intelligence) { callback(null); return; }
+
+        client.intelligence = intelligence;
+        client.intelligenceTimestamp = new Date().toISOString();
+
+        // Update legacy siteData for backward compat
+        client.siteData = {
+            products: intelligence.products,
+            description: intelligence.siteDescription,
+            tagline: intelligence.tagline,
+            prices: [],
+            categories: intelligence.categories,
+            links: intelligence.shopLinks
+        };
+
+        if (intelligence.images.length > 0) {
+            if (!clientAssets[client.id]) clientAssets[client.id] = {};
+            clientAssets[client.id].autoPulled = intelligence.images.slice(0, 12);
+            saveClientAssets();
+        }
+
+        saveClients();
+        callback(intelligence);
+    });
+}
+
+function getClientIntelligence(clientId) {
+    var client = state.clients.find(function(c) { return c.id === clientId; });
+    return (client && client.intelligence) ? client.intelligence : null;
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -3938,6 +4484,133 @@ function selectGoalChip(el) {
 
 var gpState = { auditedClientId: null };
 
+// ── BRAND INTELLIGENCE UI ──
+function renderBrandIntelligence(client) {
+    var section = document.getElementById('brandIntelSection');
+    var content = document.getElementById('brandIntelContent');
+    if (!section || !content) return;
+
+    var intel = client ? client.intelligence : null;
+    if (!intel || !intel.products || intel.products.length === 0) {
+        // No intelligence yet — show scan prompt if website exists
+        if (client && client.website) {
+            section.style.display = 'block';
+            content.innerHTML = '<div class="cg-bi-empty">' +
+                '<p>Website detected but not yet scanned. Run a scan to discover products, brand voice, and smart promotion strategies.</p>' +
+                '<button class="cg-btn cg-btn-primary cg-btn-sm" onclick="refreshBrandIntelligence()">Scan ' + escapeHtml(client.website) + '</button>' +
+            '</div>';
+        } else {
+            section.style.display = 'none';
+        }
+        return;
+    }
+
+    section.style.display = 'block';
+    var voice = intel.brandVoice || {};
+    var strategies = generateContentStrategies(intel, client.name, client.goal || 'engagement');
+    var products = intel.products || [];
+    var priceRange = intel.priceRange || { min: 0, max: 0, currency: '' };
+
+    var html = '';
+
+    // Voice summary
+    html += '<div class="cg-bi-voice">';
+    html += '<h3>Brand Voice</h3>';
+    html += '<div class="cg-bi-voice-grid">';
+    html += '<div class="cg-bi-voice-item"><span class="cg-bi-label">Tone</span><span class="cg-bi-value">' + (voice.tone || 'neutral') + '</span></div>';
+    html += '<div class="cg-bi-voice-item"><span class="cg-bi-label">Style</span><span class="cg-bi-value">' + (voice.sentenceStyle || 'medium') + '</span></div>';
+    html += '<div class="cg-bi-voice-item"><span class="cg-bi-label">Energy</span><span class="cg-bi-value">' + (voice.emotionalTone || 'balanced') + '</span></div>';
+    if (priceRange.max > 0) {
+        html += '<div class="cg-bi-voice-item"><span class="cg-bi-label">Price range</span><span class="cg-bi-value">' + priceRange.currency + priceRange.min + ' – ' + priceRange.currency + priceRange.max + '</span></div>';
+    }
+    html += '</div>';
+    if (voice.keywords && voice.keywords.length > 0) {
+        html += '<div class="cg-bi-keywords"><span class="cg-bi-label">Top keywords:</span> ' + voice.keywords.slice(0, 10).map(function(k) { return '<span class="cg-bi-keyword">' + escapeHtml(k) + '</span>'; }).join(' ') + '</div>';
+    }
+    html += '</div>';
+
+    // Strategies
+    if (strategies.length > 0) {
+        html += '<div class="cg-bi-strategies">';
+        html += '<h3>Recommended Strategies</h3>';
+        strategies.slice(0, 5).forEach(function(s) {
+            html += '<div class="cg-bi-strategy"><span class="cg-bi-strategy-type">' + escapeHtml(s.type) + '</span><span>' + escapeHtml(s.reason) + '</span></div>';
+        });
+        html += '</div>';
+    }
+
+    // Products found
+    if (products.length > 0) {
+        html += '<div class="cg-bi-products">';
+        html += '<h3>Products Found (' + products.length + ')</h3>';
+        html += '<div class="cg-bi-products-grid">';
+        products.slice(0, 12).forEach(function(p) {
+            var catColors = { hero: '#10B981', premium: '#8B5CF6', new: '#3B82F6', urgency: '#EF4444', featured: '#F59E0B', entry: '#06B6D4', standard: '#94A3B8' };
+            var catColor = catColors[p._promotionCategory] || '#94A3B8';
+            html += '<div class="cg-bi-product-card">';
+            if (p.image) {
+                html += '<img src="' + escapeHtml(p.image) + '" alt="' + escapeHtml(p.name) + '" class="cg-bi-product-img" onerror="this.style.display=\'none\'">';
+            }
+            html += '<div class="cg-bi-product-info">';
+            html += '<div class="cg-bi-product-name">' + escapeHtml(p.name) + '</div>';
+            if (p.price) html += '<div class="cg-bi-product-price">' + escapeHtml(p.price) + '</div>';
+            html += '<div class="cg-bi-product-badge" style="color:' + catColor + ';border-color:' + catColor + ';">' + escapeHtml(p._promotionCategory || 'standard') + '</div>';
+            if (p._promotionReason) html += '<div class="cg-bi-product-reason">' + escapeHtml(p._promotionReason) + '</div>';
+            html += '</div></div>';
+        });
+        html += '</div></div>';
+    }
+
+    // Popularity signals
+    if (intel.popularSignals && intel.popularSignals.length > 0) {
+        html += '<div class="cg-bi-signals">';
+        html += '<h3>Signals Detected</h3>';
+        intel.popularSignals.forEach(function(s) {
+            html += '<span class="cg-bi-signal">' + escapeHtml(s.signal) + ' (' + s.count + ')</span>';
+        });
+        html += '</div>';
+    }
+
+    // Social proof
+    if (intel.socialProof && intel.socialProof.length > 0) {
+        html += '<div class="cg-bi-proof">';
+        html += '<h3>Social Proof</h3>';
+        intel.socialProof.slice(0, 5).forEach(function(sp) {
+            if (sp.type === 'reviews') {
+                html += '<div class="cg-bi-proof-item">' + sp.count + ' reviews detected</div>';
+            } else {
+                html += '<div class="cg-bi-proof-item">"' + escapeHtml(sp.text.substring(0, 150)) + '"</div>';
+            }
+        });
+        html += '</div>';
+    }
+
+    content.innerHTML = html;
+}
+
+function refreshBrandIntelligence() {
+    var client = getActiveClient();
+    if (!client || !client.website) {
+        showToast('Add a website URL to the client profile first', 'error');
+        return;
+    }
+    // Clear old intelligence to force re-scan
+    client.intelligence = null;
+    saveClients();
+    showToast('Deep-scanning ' + client.website + '...', 'info');
+
+    runBrandIntelligence(client.id, function(intel) {
+        if (intel) {
+            var msg = intel.products.length + ' products';
+            if (intel.brandVoice.tone !== 'neutral') msg += ', voice: ' + intel.brandVoice.tone;
+            showToast('Scan complete: ' + msg, 'success');
+            renderBrandIntelligence(client);
+        } else {
+            showToast('Could not scan website — site may block external requests', 'error');
+        }
+    });
+}
+
 function renderGrowthPlanClientRow() {
     var row = document.getElementById('gpClientRow');
     if (!row) return;
@@ -3999,10 +4672,18 @@ function buildGrowthAudit(client) {
     renderGoalBanner(client, scores._goal);
     renderStrategyBadge(scores._strategy);
     renderScoreBreakdown(scores);
+    renderBrandIntelligence(client);
     renderTop3Actions(decisions.top3, client);
     renderNotRecommended(decisions.excluded);
     renderChannelBreakdown(client, scores);
     renderAdsLauncher(client);
+
+    // Auto-scan brand intelligence if website exists but not yet scanned
+    if (client.website && !client.intelligence) {
+        runBrandIntelligence(client.id, function(intel) {
+            if (intel) renderBrandIntelligence(client);
+        });
+    }
 }
 
 function renderGoalBanner(client, goal) {

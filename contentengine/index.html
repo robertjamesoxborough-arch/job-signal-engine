@@ -862,6 +862,21 @@
                 <!-- Web presence score cards -->
                 <div class="cg-gp-scores" id="gpScores"></div>
 
+                <!-- Brand Intelligence Panel -->
+                <div class="cg-gp-section" id="brandIntelSection" style="display:none;">
+                    <div class="cg-gp-section-header">
+                        <div>
+                            <h2>Brand Intelligence</h2>
+                            <p>What we found from crawling the website — products, voice, and promotion strategies</p>
+                        </div>
+                        <button class="cg-btn cg-btn-secondary cg-btn-sm" onclick="refreshBrandIntelligence()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Re-scan
+                        </button>
+                    </div>
+                    <div id="brandIntelContent"></div>
+                </div>
+
                 <!-- Priority action plan -->
                 <div class="cg-gp-section">
                     <div class="cg-gp-section-header">
