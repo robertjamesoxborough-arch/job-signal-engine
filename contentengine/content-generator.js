@@ -176,11 +176,15 @@ function openAddClientModal() {
     document.getElementById('newClientIndustry').value = '';
     document.getElementById('newClientAudience').value = '';
     document.getElementById('newClientWebsite').value = '';
+    if (document.getElementById('newClientShopUrl')) document.getElementById('newClientShopUrl').value = '';
     document.getElementById('newClientNotes').value = '';
     document.getElementById('newClientInstagramUrl').value = '';
     document.getElementById('newClientFacebookUrl').value = '';
     document.getElementById('newClientTiktokUrl').value = '';
     document.getElementById('newClientLinkedinUrl').value = '';
+    if (document.getElementById('newClientTwitterUrl')) document.getElementById('newClientTwitterUrl').value = '';
+    if (document.getElementById('newClientYoutubeUrl')) document.getElementById('newClientYoutubeUrl').value = '';
+    if (document.getElementById('newClientPinterestUrl')) document.getElementById('newClientPinterestUrl').value = '';
     document.querySelectorAll('#addClientModal .cg-chip').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('#newClientGoal .cg-chip').forEach(c => c.classList.remove('active'));
     document.querySelectorAll('.cg-color-swatch').forEach(s => s.classList.remove('active'));
@@ -216,11 +220,15 @@ function saveNewClient() {
     const channels = Array.from(document.querySelectorAll('#newClientChannels .cg-chip.active')).map(c => c.dataset.value);
     const goalEl = document.querySelector('#newClientGoal .cg-chip.active');
     const goal = goalEl ? goalEl.dataset.value : '';
+    const shopUrl = (document.getElementById('newClientShopUrl') ? document.getElementById('newClientShopUrl').value : '').trim();
     const socialUrls = {
         instagram: (document.getElementById('newClientInstagramUrl').value || '').trim(),
         facebook: (document.getElementById('newClientFacebookUrl').value || '').trim(),
         tiktok: (document.getElementById('newClientTiktokUrl').value || '').trim(),
-        linkedin: (document.getElementById('newClientLinkedinUrl').value || '').trim()
+        linkedin: (document.getElementById('newClientLinkedinUrl').value || '').trim(),
+        twitter: (document.getElementById('newClientTwitterUrl') ? document.getElementById('newClientTwitterUrl').value : '').trim(),
+        youtube: (document.getElementById('newClientYoutubeUrl') ? document.getElementById('newClientYoutubeUrl').value : '').trim(),
+        pinterest: (document.getElementById('newClientPinterestUrl') ? document.getElementById('newClientPinterestUrl').value : '').trim()
     };
 
     if (state.editingClientId) {
@@ -232,6 +240,7 @@ function saveNewClient() {
             client.industry = industry;
             client.audience = audience;
             client.website = website;
+            client.shopUrl = shopUrl;
             client.notes = notes;
             client.tone = tone;
             client.channels = channels;
@@ -248,6 +257,7 @@ function saveNewClient() {
             industry: industry,
             audience: audience,
             website: website,
+            shopUrl: shopUrl,
             notes: notes,
             tone: tone,
             channels: channels,
@@ -284,12 +294,16 @@ function editClient(clientId, event) {
     document.getElementById('newClientIndustry').value = client.industry || '';
     document.getElementById('newClientAudience').value = client.audience || '';
     document.getElementById('newClientWebsite').value = client.website || '';
+    if (document.getElementById('newClientShopUrl')) document.getElementById('newClientShopUrl').value = client.shopUrl || '';
     document.getElementById('newClientNotes').value = client.notes || '';
     var su = client.socialUrls || {};
     document.getElementById('newClientInstagramUrl').value = su.instagram || '';
     document.getElementById('newClientFacebookUrl').value = su.facebook || '';
     document.getElementById('newClientTiktokUrl').value = su.tiktok || '';
     document.getElementById('newClientLinkedinUrl').value = su.linkedin || '';
+    if (document.getElementById('newClientTwitterUrl')) document.getElementById('newClientTwitterUrl').value = su.twitter || '';
+    if (document.getElementById('newClientYoutubeUrl')) document.getElementById('newClientYoutubeUrl').value = su.youtube || '';
+    if (document.getElementById('newClientPinterestUrl')) document.getElementById('newClientPinterestUrl').value = su.pinterest || '';
 
     document.querySelectorAll('.cg-color-swatch').forEach(s => {
         s.classList.toggle('active', s.dataset.color === client.color);
@@ -2731,43 +2745,78 @@ function runBrandIntelligence(clientId, callback) {
     if (!client) { callback(null); return; }
 
     var url = (client.website || '').trim();
-    if (!url) { callback(null); return; }
+    var shopUrl = (client.shopUrl || '').trim();
+    if (!url && !shopUrl) { callback(null); return; }
+    // If only shop URL, use that as the main crawl target
+    if (!url && shopUrl) url = shopUrl;
 
     deepCrawlWebsite(url, function(intelligence) {
-        if (!intelligence) { callback(null); return; }
+        if (!intelligence && !shopUrl) { callback(null); return; }
+        if (!intelligence) intelligence = { products: [], services: [], brandVoice: { tone: 'neutral', keywords: [], phrases: [] }, siteDescription: '', tagline: '', allCopy: [], categories: [], priceRange: { min: 0, max: 0, currency: '' }, popularSignals: [], images: [], shopLinks: [], socialLinks: {}, socialProof: [], competitorHints: [] };
 
-        client.intelligence = intelligence;
-        client.intelligenceTimestamp = new Date().toISOString();
-
-        // Update legacy siteData for backward compat
-        client.siteData = {
-            products: intelligence.products,
-            description: intelligence.siteDescription,
-            tagline: intelligence.tagline,
-            prices: [],
-            categories: intelligence.categories,
-            links: intelligence.shopLinks
-        };
-
-        if (intelligence.images.length > 0) {
-            if (!clientAssets[client.id]) clientAssets[client.id] = {};
-            clientAssets[client.id].autoPulled = intelligence.images.slice(0, 12);
-            saveClientAssets();
-        }
-
-        // Auto-populate social URLs from crawled links (don't overwrite manually entered ones)
-        if (intelligence.socialLinks && Object.keys(intelligence.socialLinks).length > 0) {
-            if (!client.socialUrls) client.socialUrls = {};
-            Object.keys(intelligence.socialLinks).forEach(function(platform) {
-                if (!client.socialUrls[platform]) {
-                    client.socialUrls[platform] = intelligence.socialLinks[platform];
-                }
+        // If shop URL provided separately, crawl it as a priority page for products
+        if (shopUrl && shopUrl !== url) {
+            fetchViaProxy(shopUrl, 10000).then(function(shopHtml) {
+                var shopData = extractSiteData(shopHtml, shopUrl);
+                var shopImages = extractImagesFromHtml(shopHtml, shopUrl);
+                var existingNames = {};
+                intelligence.products.forEach(function(p) { existingNames[p.name.toLowerCase()] = true; });
+                shopData.products.forEach(function(p) {
+                    if (!existingNames[p.name.toLowerCase()]) {
+                        intelligence.products.push(p);
+                        existingNames[p.name.toLowerCase()] = true;
+                    }
+                });
+                var existingUrls = {};
+                intelligence.images.forEach(function(img) { existingUrls[img.url] = true; });
+                shopImages.forEach(function(img) {
+                    if (!existingUrls[img.url] && intelligence.images.length < 30) {
+                        intelligence.images.push(img);
+                    }
+                });
+                finishIntelligence(client, intelligence, callback);
+            }).catch(function() {
+                finishIntelligence(client, intelligence, callback);
             });
+        } else {
+            finishIntelligence(client, intelligence, callback);
         }
 
-        saveClients();
-        callback(intelligence);
     });
+}
+
+function finishIntelligence(client, intelligence, callback) {
+    client.intelligence = intelligence;
+    client.intelligenceTimestamp = new Date().toISOString();
+
+    // Update legacy siteData for backward compat
+    client.siteData = {
+        products: intelligence.products,
+        description: intelligence.siteDescription,
+        tagline: intelligence.tagline,
+        prices: [],
+        categories: intelligence.categories,
+        links: intelligence.shopLinks
+    };
+
+    if (intelligence.images.length > 0) {
+        if (!clientAssets[client.id]) clientAssets[client.id] = {};
+        clientAssets[client.id].autoPulled = intelligence.images.slice(0, 12);
+        saveClientAssets();
+    }
+
+    // Auto-populate social URLs from crawled links (don't overwrite manually entered ones)
+    if (intelligence.socialLinks && Object.keys(intelligence.socialLinks).length > 0) {
+        if (!client.socialUrls) client.socialUrls = {};
+        Object.keys(intelligence.socialLinks).forEach(function(platform) {
+            if (!client.socialUrls[platform]) {
+                client.socialUrls[platform] = intelligence.socialLinks[platform];
+            }
+        });
+    }
+
+    saveClients();
+    callback(intelligence);
 }
 
 function getClientIntelligence(clientId) {
@@ -5189,6 +5238,32 @@ function renderStrategyBadge(strategy) {
     var sLabel = { early:'Early stage', growing:'Growing', mature:'Mature' }[strategy.stage] || strategy.stage;
     var cColor = { Medium:'#F59E0B', Low:'#94A3B8' }[strategy.bTypeConf] || '#94A3B8';
     var sigs   = strategy.signalsFired.slice(0,4).join(', ') || 'No strong signals — update industry/audience';
+    // Build smart prompts — specific questions when data is missing or confidence is low
+    var prompts = [];
+    var client = getActiveClient();
+    if (client) {
+        if (!client.industry || client.industry.length < 3) prompts.push({ q: 'What does this business actually sell?', hint: 'e.g. "premium running shoes", "handmade candles", "B2B HR software"', field: 'industry' });
+        if (!client.audience || client.audience.length < 10) prompts.push({ q: 'Who is the ideal customer?', hint: 'e.g. "Women 25-40 who run marathons", "HR directors at mid-size tech companies"', field: 'audience' });
+        if (!client.website) prompts.push({ q: 'What\'s the website URL?', hint: 'We\'ll crawl it for products, brand voice, and images', field: 'website' });
+        if (!client.shopUrl && client.website) prompts.push({ q: 'Is there a direct shop/collections page?', hint: 'e.g. yourbrand.com/shop or /collections/all — helps us find more products', field: 'shopUrl' });
+        if (strategy.bType === 'unknown') prompts.push({ q: 'Is this B2B or B2C?', hint: 'Do they sell to other businesses or directly to consumers?', field: 'notes' });
+        if (strategy.offType === 'unknown') prompts.push({ q: 'Product or service business?', hint: 'Do they sell physical/digital products, or professional services?', field: 'notes' });
+        if (!client.goal) prompts.push({ q: 'What\'s the primary marketing goal?', hint: 'e.g. sales, leads, brand awareness, engagement', field: 'goal' });
+    }
+
+    var promptsHtml = '';
+    if (prompts.length > 0) {
+        promptsHtml = '<div class="cg-gp-smart-prompts" style="margin-top:0.5rem;padding:0.5rem 0.75rem;background:var(--amber-50,#fffbeb);border:1px solid var(--amber-200,#fde68a);border-radius:8px;">' +
+            '<div style="font-size:0.75rem;font-weight:600;color:var(--amber-700,#b45309);margin-bottom:0.35rem;">Help us improve your strategy — answer these:</div>' +
+            prompts.map(function(p) {
+                return '<div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.35rem;">' +
+                    '<span style="font-size:0.75rem;color:var(--gray-600);flex:1;">' + escapeHtml(p.q) + ' <span style="color:var(--gray-400);font-style:italic;">' + escapeHtml(p.hint) + '</span></span>' +
+                    '<button type="button" class="cg-btn cg-btn-sm cg-btn-secondary" style="font-size:0.7rem;padding:0.15rem 0.5rem;" onclick="editClient(\'' + (client ? client.id : '') + '\')">Update</button>' +
+                '</div>';
+            }).join('') +
+        '</div>';
+    }
+
     el.innerHTML = '<div class="cg-gp-strategy-inner">' +
         '<div class="cg-gp-strategy-row">' +
             '<span class="cg-gp-strategy-label">Inferred:</span>' +
@@ -5197,6 +5272,7 @@ function renderStrategyBadge(strategy) {
         '</div>' +
         '<div class="cg-gp-strategy-signals">Signals: ' + escapeHtml(sigs) + '</div>' +
         '<div class="cg-gp-strategy-note">' + escapeHtml(strategy.confReason) + '</div>' +
+        promptsHtml +
     '</div>';
 }
 
