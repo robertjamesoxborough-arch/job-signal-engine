@@ -623,11 +623,13 @@ function generateContent() {
             clearInterval(progressInterval);
             if (fill) fill.style.width = '100%';
 
-            if (intelligence) {
+            if (intelligence && intelligence.products && intelligence.products.length > 0) {
                 var msg = intelligence.products.length + ' products found';
                 if (intelligence.brandVoice.tone !== 'neutral') msg += ', brand voice: ' + intelligence.brandVoice.tone;
                 if (intelligence.popularSignals.length > 0) msg += ', ' + intelligence.popularSignals.length + ' popularity signals';
                 showToast('Brand intelligence: ' + msg, 'success');
+            } else {
+                showToast('Could not pull products from website — content will use generic templates. Try adding products manually via client notes.', 'info');
             }
 
             state.generatedContent = generateContentPieces(brand, audience, qty, channels, tone, goal, types);
@@ -677,9 +679,13 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     var whatTheySell = industry.toLowerCase();
     // Common mappings for vague industries
     var sellMap = {
-        'fashion': 'eyewear', 'e-commerce': 'products', 'ecommerce': 'products',
+        'fashion': 'fashion', 'e-commerce': 'products', 'ecommerce': 'products',
         'retail': 'products', 'saas': 'software', 'coaching': 'coaching services',
-        'beauty': 'beauty products', 'food': 'food & drink', 'fitness': 'fitness products'
+        'beauty': 'beauty products', 'food': 'food & drink', 'fitness': 'fitness products',
+        'jewellery': 'jewellery', 'jewelry': 'jewelry', 'skincare': 'skincare',
+        'home': 'home goods', 'furniture': 'furniture', 'tech': 'tech products',
+        'wellness': 'wellness products', 'supplements': 'supplements',
+        'pet': 'pet products', 'kids': 'kids products', 'sports': 'sports gear'
     };
     // Only use map if industry is very generic — if client has notes or site data, prefer those
     if (sellMap[whatTheySell] && client && !client.notes) whatTheySell = sellMap[whatTheySell];
@@ -926,6 +932,74 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
                 hashtags: baseHashtags + ' #CarouselPost #ShopNow #' + brandTag
             }
         ],
+        email: hasProducts ? [
+            {
+                title: 'Product Spotlight Email — ' + prod(0),
+                text: 'SUBJECT LINE: ' + prod(0) + ' is here — and it\'s exactly what you\'ve been waiting for\nPREVIEW TEXT: See why this is flying off the shelves\n\nHi [First Name],\n\n' + voiceHooks[0] + '.\n\nWe wanted you to be the first to know — ' + prod(0) + ' is ' + (prodCategory(0) === 'new' ? 'brand new' : 'one of our bestsellers') + '.\n\n' + (prodDesc(0) || brandContext) + '\n\n' + (prodPrice(0) ? prodPrice(0) + '\n\n' : '') + '[PRODUCT IMAGE: ' + (prodImg(0) || prod(0)) + ']\n\n[CTA BUTTON: Shop ' + prod(0) + ' Now]\n\nBest,\nThe ' + brandName + ' Team\n\n---\nALT SUBJECT LINES:\n• Your new favourite ' + whatTheySell + ' just landed\n• The one everyone\'s been asking about\n• ' + brandName + ': meet ' + prod(0),
+                hashtags: '',
+                suggestedImage: prodImg(0)
+            },
+            {
+                title: 'Abandoned Cart Recovery Email',
+                text: 'SUBJECT LINE: You left something behind...\nPREVIEW TEXT: Your ' + whatTheySell + ' is still waiting for you\n\nHi [First Name],\n\nWe noticed you were checking out ' + (hasProducts ? prod(0) : 'some of our ' + whatTheySell) + ' — but didn\'t finish your order.\n\nNo pressure, but your items won\'t be reserved for long.\n\n[CART ITEMS WITH IMAGES]\n\n[CTA BUTTON: Complete Your Order]\n\nNeed help? Reply to this email — we\'re real people and we\'re here.\n\nThe ' + brandName + ' Team\n\n---\nSEND TIMING: 1 hour after cart abandonment\nFOLLOW-UP: 24hrs later with social proof / reviews\nFINAL: 48hrs with urgency (limited stock)',
+                hashtags: ''
+            },
+            {
+                title: 'Welcome Sequence Email 1 of 3',
+                text: 'SUBJECT LINE: Welcome to ' + brandName + ' — here\'s what to expect\nPREVIEW TEXT: Plus a look at what our customers love most\n\nHi [First Name],\n\nWelcome to the ' + brandName + ' family.\n\nHere\'s what we\'re about:\n' + (siteDesc || brandContext) + '\n\n' + (uspLine ? 'What makes us different:\n' + uspLine + '\n\n' : '') + 'Here\'s what our customers love most:\n' + (hasProducts ? '→ ' + prod(0) + (prodPrice(0) ? ' (' + prodPrice(0) + ')' : '') + '\n→ ' + prod(1) + (prodPrice(1) ? ' (' + prodPrice(1) + ')' : '') : '→ Our curated ' + whatTheySell + ' collection\n→ Quality you can actually feel') + '\n\n[CTA BUTTON: Shop Bestsellers]\n\nMore coming your way soon.\nThe ' + brandName + ' Team\n\n---\nEMAIL 2 (Day 3): Social proof — customer reviews + results\nEMAIL 3 (Day 7): Single clear CTA with incentive if needed',
+                hashtags: ''
+            }
+        ] : [
+            {
+                title: 'Brand Introduction Email',
+                text: 'SUBJECT LINE: Welcome to ' + brandName + ' — here\'s what we\'re about\nPREVIEW TEXT: Plus what our customers love most\n\nHi [First Name],\n\nWelcome to ' + brandName + '.\n\n' + (siteDesc || brandContext) + '\n\n' + (uspLine ? 'Why people choose us:\n' + uspLine + '\n\n' : '') + '[CTA BUTTON: Shop the Collection]\n\nWe\'re real people building something we believe in. Reply to this email anytime — we read every one.\n\nThe ' + brandName + ' Team\n\n---\nALT SUBJECT LINES:\n• ' + brandName + ' — nice to meet you\n• Here\'s what makes us different\n• Your inbox just got better',
+                hashtags: ''
+            },
+            {
+                title: 'Abandoned Cart Recovery Email',
+                text: 'SUBJECT LINE: Still thinking it over?\nPREVIEW TEXT: Your ' + whatTheySell + ' is still waiting\n\nHi [First Name],\n\nYou were so close.\n\nYour items from ' + brandName + ' are still in your cart — but we can\'t hold them forever.\n\n[CART ITEMS WITH IMAGES]\n\n[CTA BUTTON: Complete Your Order]\n\nQuestions? Just hit reply.\n\nThe ' + brandName + ' Team\n\n---\nSEND TIMING: 1 hour after abandonment\nNO DISCOUNT in first email — lead with product, not price',
+                hashtags: ''
+            }
+        ],
+        pinterest: hasProducts ? [
+            {
+                title: 'Product Pin — ' + prod(0),
+                text: 'PIN TITLE: ' + prod(0) + (prodPrice(0) ? ' | ' + prodPrice(0) : '') + ' | ' + brandName + '\n\nPIN DESCRIPTION:\n' + (prodDesc(0) || brandContext) + '\n\nPerfect for anyone looking for quality ' + whatTheySell + '.' + (prodPrice(0) ? ' Starting at ' + prodPrice(0) + '.' : '') + '\n\nShop ' + prod(0) + ' at ' + brandName + '.\n\n' + brandTag + ' #' + whatTheySell.replace(/[^a-zA-Z0-9]/g, '') + ' #ShopNow #PinterestFinds\n\nIMAGE: Vertical (2:3 ratio) — lifestyle product shot, styled, natural light\nLINK: Direct to product page\n\nBOARD SUGGESTION: "' + brandName + ' — ' + whatTheySell.charAt(0).toUpperCase() + whatTheySell.slice(1) + '"',
+                hashtags: '',
+                suggestedImage: prodImg(0)
+            },
+            {
+                title: 'Collection Pin — ' + brandName + ' Bestsellers',
+                text: 'PIN TITLE: ' + brandName + ' Bestsellers | ' + whatTheySell.charAt(0).toUpperCase() + whatTheySell.slice(1) + ' You\'ll Love\n\nPIN DESCRIPTION:\nDiscover ' + brandName + '\'s most popular ' + whatTheySell + ':\n' + products.slice(0, 4).map(function(p) { return '→ ' + p.name + (p.price ? ' (' + p.price + ')' : ''); }).join('\n') + '\n\n' + (siteDesc || 'Curated for people who know what they want.') + '\n\nShop the full collection at ' + brandName + '.\n\nIMAGE: Collage or flat-lay of 3-4 products, vertical format\nBOARD: "' + brandName + ' — Top Picks"',
+                hashtags: ''
+            }
+        ] : [
+            {
+                title: 'Brand Pin — ' + brandName,
+                text: 'PIN TITLE: ' + brandName + ' | ' + whatTheySell.charAt(0).toUpperCase() + whatTheySell.slice(1) + ' Worth Discovering\n\nPIN DESCRIPTION:\n' + (siteDesc || brandContext) + '\n\n' + (uspLine ? uspLine + '\n\n' : '') + 'Shop ' + brandName + ' — link in pin.\n\nIMAGE: Vertical (2:3), lifestyle shot, text overlay with brand name\nBOARD: "' + brandName + '"',
+                hashtags: ''
+            }
+        ],
+        youtube: hasProducts ? [
+            {
+                title: 'Product Review Video — ' + prod(0),
+                text: 'VIDEO TITLE: ' + prod(0) + ' Review — Is It Worth It? | ' + brandName + '\n\nTHUMBNAIL: Close-up of product with text "HONEST REVIEW"\n\nSCRIPT OUTLINE:\n0:00 — Hook: "Everyone\'s been asking about ' + prod(0) + ' from ' + brandName + ' — so I tried it."\n0:15 — Unboxing / first impressions\n0:45 — Key features + what makes it different\n1:30 — Honest pros and cons\n2:15 — Who this is perfect for\n2:45 — Price breakdown: ' + (prodPrice(0) || 'check link below') + '\n3:00 — CTA: "Link in description to shop. Use code [CODE] for [X]% off."\n\nDESCRIPTION:\n' + prod(0) + ' by ' + brandName + '\n' + (prodDesc(0) || brandContext) + '\n\n🔗 Shop: [PRODUCT URL]\n\nTAGS: ' + brandName + ', ' + prod(0) + ', ' + whatTheySell + ' review, honest review, is it worth it',
+                hashtags: '',
+                suggestedImage: prodImg(0)
+            },
+            {
+                title: 'YouTube Short — ' + prod(1) + ' in 60 Seconds',
+                text: 'SHORT TITLE: ' + prod(1) + ' in 60 Seconds | ' + brandName + '\n\nFORMAT: Vertical (9:16), under 60s\n\nSCRIPT:\n[0s] "You NEED to see this ' + whatTheySell + '"\n[3s] Show product close-up / unboxing\n[10s] "Here\'s what makes it special..."\n[15s] 3 quick feature callouts with text overlay\n[30s] Show product in use / styled\n[45s] "Link in description — ' + (prodPrice(1) ? prodPrice(1) : 'shop now') + '"\n\nMUSIC: Trending audio\nCTA: Pin comment with product link',
+                hashtags: '',
+                suggestedImage: prodImg(1)
+            }
+        ] : [
+            {
+                title: 'Brand Story Video — ' + brandName,
+                text: 'VIDEO TITLE: Why We Started ' + brandName + ' | Our Story\n\nTHUMBNAIL: Founder photo with text "OUR STORY"\n\nSCRIPT OUTLINE:\n0:00 — Hook: "We started ' + brandName + ' because we were tired of [problem]."\n0:30 — The problem with the industry\n1:00 — How ' + brandName + ' is different\n1:30 — Show products / behind the scenes\n2:00 — Customer reactions / social proof\n2:30 — What\'s next for ' + brandName + '\n3:00 — CTA: "Subscribe + shop the link below"\n\nDESCRIPTION:\n' + (siteDesc || brandContext) + '\n\n🔗 Shop: [WEBSITE]\n\nTAGS: ' + brandName + ', ' + whatTheySell + ', brand story, small business, behind the scenes',
+                hashtags: ''
+            }
+        ],
         thread: [
             {
                 title: 'Twitter/X Thread',
@@ -1006,7 +1080,8 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             score: computeContentScore(type, channel, goal),
             suggestedImage: template.suggestedImage || '',
             _strategy: template._strategy || '',
-            _voiceTone: voiceTone
+            _voiceTone: voiceTone,
+            _dataSource: hasProducts ? 'crawled' : 'generic'
         });
     }
 
@@ -1063,6 +1138,7 @@ function renderContent() {
                 </div>
             </div>
             <h3 class="cg-content-title">${piece.title}</h3>
+            ${piece._dataSource === 'generic' ? '<div style="font-size:0.7rem;color:var(--amber-600,#d97706);margin-bottom:0.25rem;padding:0.2rem 0.5rem;background:var(--amber-50,#fffbeb);border-radius:4px;display:inline-block;">Generic template — scan website or add products for tailored content</div>' : ''}
             ${piece._strategy ? '<div class="cg-content-strategy"><span class="cg-strategy-icon">📊</span> <strong>Why this:</strong> ' + piece._strategy + (piece._voiceTone && piece._voiceTone !== 'neutral' ? ' · Voice: ' + piece._voiceTone : '') + '</div>' : ''}
             ${piece.suggestedImage ? '<div class="cg-content-suggested-image"><img src="' + piece.suggestedImage + '" alt="Suggested product image" loading="lazy" onerror="this.parentElement.style.display=\'none\'"><div class="cg-content-img-actions"><button class="cg-btn cg-btn-sm cg-btn-primary" onclick="downloadAutoPulledImage(\'' + piece.suggestedImage + '\', \'' + piece.title.replace(/'/g, '') + '\')">Download Image</button></div></div>' : ''}
             <div class="cg-content-text" id="text-${piece.id}">
@@ -1140,11 +1216,31 @@ function regenerateOne(id) {
         var brandName = client ? client.name : rawBrand;
         if (brandName.indexOf(' - ') > 0) brandName = brandName.split(' - ')[0].trim();
         var whatTheySell = industry.toLowerCase();
-        var sellMap = { 'fashion': 'eyewear', 'e-commerce': 'products', 'ecommerce': 'products', 'retail': 'products', 'beauty': 'beauty products' };
+        var sellMap = { 'e-commerce': 'products', 'ecommerce': 'products', 'retail': 'products', 'beauty': 'beauty products', 'fashion': 'fashion', 'skincare': 'skincare', 'fitness': 'fitness products', 'jewellery': 'jewellery', 'jewelry': 'jewelry' };
         if (sellMap[whatTheySell]) whatTheySell = sellMap[whatTheySell];
+
+        // Use brand intelligence when available
+        var intelligence = (client && client.intelligence) ? client.intelligence : null;
         var siteData = (client && client.siteData) ? client.siteData : {};
-        var siteDesc = siteData.description || '';
+        var siteDesc = (intelligence ? intelligence.siteDescription : siteData.description) || '';
         var brandContext = siteDesc || (brandName + ' — independent ' + whatTheySell);
+        var products = (intelligence && intelligence.products) ? intelligence.products : (siteData.products || []);
+        var brandVoice = (intelligence && intelligence.brandVoice) ? intelligence.brandVoice : { tone: 'neutral' };
+        var voiceTone = brandVoice.tone || 'neutral';
+
+        // Voice-matched openers
+        var voiceOpeners = {
+            luxury: ['Crafted for those who appreciate the details', 'Where quality meets intention', 'Elevate your everyday'],
+            casual: ['Okay hear us out on this one', 'Real talk — this might be the one', 'Trust the process (and the product)'],
+            bold: ['Not for everyone. That\'s the point', 'This changes the game', 'We don\'t do boring'],
+            warm: ['Made with love, for you', 'There\'s a story behind every piece', 'Welcome to something special'],
+            tech: ['Engineered for performance', 'Smarter by design', 'The future is here'],
+            neutral: ['Discover what\'s new', 'See what everyone\'s talking about', 'Something special just for you']
+        };
+        var openers = voiceOpeners[voiceTone] || voiceOpeners.neutral;
+
+        function prodName(i) { return products.length > 0 ? products[i % products.length].name : whatTheySell; }
+        function prodP(i) { return products.length > 0 ? (products[i % products.length].price || '') : ''; }
 
         const brandTag = '#' + brandName.replace(/[^a-zA-Z0-9]/g, '');
         const industryTag = '#' + industry.replace(/[^a-zA-Z0-9]/g, '');
@@ -1158,22 +1254,57 @@ function regenerateOne(id) {
         };
         const baseHashtags = brandTag + ' ' + industryTag + ' ' + (goalTags[goal] || '#Growth');
 
+        // Seasonal awareness
+        var month = new Date().getMonth();
+        var seasonalHook = '';
+        if (month === 0) seasonalHook = 'New year, new ' + whatTheySell + '.';
+        else if (month === 1) seasonalHook = 'Treat yourself this Valentine\'s — you deserve it.';
+        else if (month === 2 || month === 3) seasonalHook = 'Spring refresh — new season, new ' + whatTheySell + '.';
+        else if (month === 4 || month === 5) seasonalHook = 'Summer-ready ' + whatTheySell + ' from ' + brandName + '.';
+        else if (month === 8 || month === 9) seasonalHook = 'Autumn edit — the new collection is here.';
+        else if (month === 10) seasonalHook = 'Black Friday is coming — save the date.';
+        else if (month === 11) seasonalHook = 'The perfect gift from ' + brandName + '.';
+        else seasonalHook = 'Fresh from ' + brandName + '.';
+
         const regenPool = {
             post: [
-                { title: brandName + ' — Our Story', text: brandContext + '\n\nWe started ' + brandName + ' because we wanted ' + whatTheySell + ' that actually delivers.\n\nNo compromises. No shortcuts. Just quality you can see and feel.\n\nCome see for yourself — link in bio.', hashtags: baseHashtags + ' #OurStory #ShopSmall' },
+                { title: brandName + ' — Our Story', text: brandContext + '\n\n' + openers[0] + '.\n\nWe started ' + brandName + ' because we wanted ' + whatTheySell + ' that actually delivers.\n\nNo compromises. No shortcuts. Just quality you can see and feel.\n\nCome see for yourself — link in bio.', hashtags: baseHashtags + ' #OurStory #ShopSmall' },
                 { title: 'What Makes Us Different', text: 'There are hundreds of ' + whatTheySell + ' brands out there.\n\nSo why ' + brandName + '?\n\nBecause we don\'t do mass-produced.\nWe don\'t chase trends that die in a week.\nWe make ' + whatTheySell + ' you\'ll actually love.\n\nSee the collection — link in bio.', hashtags: baseHashtags + ' #QualityMatters #ShopNow' },
                 { title: 'Customer Spotlight', text: '"I can\'t believe the quality from ' + brandName + '."\n\nThis is what our customers keep saying.\n\nWe don\'t just sell ' + whatTheySell + ' — we help you find something that actually suits you.\n\nReady to see why people keep coming back?\n\nLink in bio.', hashtags: baseHashtags + ' #CustomerLove #Reviews' },
-                { title: 'New Arrivals', text: 'Just landed at ' + brandName + '.\n\nFresh ' + whatTheySell + ' — curated for people who care about what they choose.\n\nFirst to see = first to shop.\n\nLink in bio.', hashtags: baseHashtags + ' #NewArrivals #JustLanded' },
+                { title: (products.length > 0 ? 'Product Spotlight — ' + prodName(0) : 'New Arrivals'), text: products.length > 0 ? (openers[1] + '.\n\nMeet ' + prodName(0) + (prodP(0) ? ' — ' + prodP(0) : '') + '.\n\n' + brandContext + '\n\nShop now — link in bio.') : ('Just landed at ' + brandName + '.\n\nFresh ' + whatTheySell + ' — curated for people who care about what they choose.\n\nFirst to see = first to shop.\n\nLink in bio.'), hashtags: baseHashtags + ' #NewArrivals #JustLanded' },
+                { title: seasonalHook.split('.')[0], text: seasonalHook + '\n\n' + openers[2] + '.\n\n' + brandContext + '\n\nShop the latest — link in bio.', hashtags: baseHashtags + ' #Seasonal #ShopNow' },
+                { title: 'Behind the Scenes', text: 'Ever wonder what goes into making ' + whatTheySell + ' this good?\n\nHere\'s a look behind the scenes at ' + brandName + '.\n\nEvery detail matters. Every choice is intentional.\n\nThis is how we do things differently.\n\nLink in bio to see the full range.', hashtags: baseHashtags + ' #BehindTheScenes #HowItsMade' },
             ],
             reel: [
                 { title: brandName + ' Unboxing', text: 'HOOK: "Wait till you see this ' + whatTheySell + '"\n\nSETUP: Show ' + brandName + ' packaging close-up\nREVEAL: Unbox the product — show details, texture, quality\nCTA: "Shop ' + brandName + ' — link in bio"\n\nDuration: 15-30s\nAudio: Trending unboxing sound', hashtags: baseHashtags + ' #Unboxing #Reels' },
                 { title: 'Styling Reel', text: '"3 ways to style your ' + brandName + ' ' + whatTheySell + '"\n\nLook 1: Casual everyday\nLook 2: Smart / dressed up\nLook 3: Bold statement\n\n"Which is your favourite? Comment below"\n\nDuration: 15-30s\nFormat: Vertical, fast cuts', hashtags: baseHashtags + ' #StyleInspo #HowToStyle' },
+                { title: 'POV Reel', text: 'HOOK: "POV: You just discovered ' + brandName + '"\n\n[Show scrolling website / unboxing / wearing]\n\nTEXT OVERLAY: "Why didn\'t I find this sooner?"\n\nCTA: "Link in bio — you\'re welcome"\n\nDuration: 15s\nAudio: Trending "discovery" sound\nFormat: Vertical, POV perspective', hashtags: baseHashtags + ' #POV #Reels #ViralFormat' },
             ],
             carousel: [
                 { title: brandName + ' Collection', text: 'Slide 1: "The ' + brandName + ' Edit"\n[Hero shot]\n\nSlide 2: "Our Bestsellers"\n[Show top products]\n\nSlide 3: "What makes us different"\n[USPs]\n\nSlide 4: "What customers say"\n[Quote]\n\nSlide 5: "Shop now — link in bio"', hashtags: baseHashtags + ' #ShopNow #Collection' },
+                { title: '5 Reasons to Shop ' + brandName, text: 'Slide 1: "5 Reasons ' + brandName + ' Hits Different"\n\nSlide 2: "1. ' + (voiceTone === 'luxury' ? 'Premium quality, no shortcuts' : 'Quality you can actually feel') + '"\n\nSlide 3: "2. Designed for real life, not just photos"\n\nSlide 4: "3. Every piece is curated, not mass-produced"\n\nSlide 5: "4. Free delivery + easy returns"\n\nSlide 6: "5. ' + (products.length > 0 ? 'Products like ' + prodName(0) + ' that people keep buying' : 'People keep coming back for a reason') + '"\n\nSlide 7: "Shop now — link in bio"\n\nDesign: Bold text, product photos, brand colours', hashtags: baseHashtags + ' #SaveThisPost #ShopSmall' },
             ],
             story: [
                 { title: 'New Drop Story', text: 'NEW from ' + brandName + '\n\nFresh ' + whatTheySell + ' just dropped\n\nTap to shop now', hashtags: '' },
+                { title: 'Quick Poll Story', text: 'Which one are you?\n\nA) ' + (products.length >= 2 ? prodName(0) : 'Classic & timeless') + '\nB) ' + (products.length >= 2 ? prodName(1) : 'Bold & modern') + '\n\n[POLL STICKER]\n\nWe\'ll reveal the winner tomorrow!', hashtags: '' },
+            ],
+            email: [
+                { title: 'Flash Sale Email', text: 'SUBJECT LINE: 24 hours only — ' + brandName + ' flash sale\nPREVIEW TEXT: Don\'t miss this\n\nHi [First Name],\n\n' + seasonalHook + '\n\nFor the next 24 hours, get [X]% off everything at ' + brandName + '.\n\n' + (products.length > 0 ? 'Including:\n→ ' + prodName(0) + '\n→ ' + prodName(1) + '\n→ ' + prodName(2) : 'Our entire collection of ' + whatTheySell) + '\n\n[CTA BUTTON: Shop the Sale]\n\nEnds midnight. No extensions.\n\nThe ' + brandName + ' Team', hashtags: '' },
+            ],
+            ad: [
+                { title: 'Social Proof Ad — ' + brandName, text: 'AD CREATIVE\n\nHeadline: "See Why ' + (products.length > 0 ? prodName(0) + ' Has 500+ 5-Star Reviews' : 'Everyone\'s Talking About ' + brandName) + '"\n\nPrimary text: "' + openers[0] + '.\n\n' + brandContext + '\n\nJoin thousands who\'ve already discovered ' + brandName + '."\n\nCTA: Shop Now\n\nTarget audience: ' + audienceShort(audience) + '\nPlacement: Feed + Stories\n\nVariant B: "The ' + whatTheySell + ' everyone keeps buying — now you know why"\nVariant C: "' + brandName + ' — rated 4.9/5 by real customers"', hashtags: '' },
+            ],
+            thread: [
+                { title: 'Why ' + brandName + ' — Thread', text: 'THREAD: Why ' + brandName + ' exists\n\n1/ ' + brandContext + '\n\n2/ We didn\'t start this to be another ' + whatTheySell + ' brand.\n\n3/ ' + openers[0] + '.\n\n4/ ' + (products.length > 0 ? 'Products like ' + prodName(0) + ' that people genuinely love.' : 'Everything is curated, not mass-produced.') + '\n\n5/ Come see — link in bio.\n\nRepost if you know someone who\'d love this.', hashtags: '' },
+            ],
+            article: [
+                { title: brandName + ' — Brand Guide', text: '# ' + brandName + ' — The Complete Guide\n\n## Who We Are\n' + brandContext + '\n\n## What We Offer\n' + (products.length > 0 ? products.slice(0,5).map(function(p){return '- ' + p.name + (p.price ? ' (' + p.price + ')' : '');}).join('\n') : 'A curated collection of ' + whatTheySell + '.') + '\n\n## Why Choose ' + brandName + '\n' + (brandVoice.keywords ? brandVoice.keywords.slice(0,5).join(', ') : 'Quality, curation, authenticity') + '\n\n## Shop Now\nVisit ' + (client && client.website ? client.website : 'our website'), hashtags: '' },
+            ],
+            pinterest: [
+                { title: 'Pin — ' + (products.length > 0 ? prodName(0) : brandName), text: 'PIN TITLE: ' + (products.length > 0 ? prodName(0) + ' | ' + brandName : brandName + ' — ' + whatTheySell.charAt(0).toUpperCase() + whatTheySell.slice(1)) + '\n\nPIN DESCRIPTION:\n' + brandContext + '\n\nIMAGE: Vertical (2:3), lifestyle styling\nLINK: Direct to product page', hashtags: '' },
+            ],
+            youtube: [
+                { title: 'YouTube Short — ' + brandName, text: 'SHORT TITLE: ' + (products.length > 0 ? prodName(0) + ' in 60 Seconds' : brandName + ' — 60 Second Brand Tour') + '\n\nFORMAT: Vertical, under 60s\n\n[0s] Hook: "' + openers[1] + '"\n[5s] Show product/brand\n[20s] Key details\n[40s] CTA: "Link in description"\n\nMUSIC: Trending audio', hashtags: '' },
             ]
         };
 
@@ -1995,11 +2126,11 @@ function renderAutoPullSection(client) {
 // ═══════════════════════════════════════════════════════════════════════
 
 var CORS_PROXIES = [
-    'https://api.allorigins.win/raw?url=',
-    'https://corsproxy.io/?',
-    'https://api.codetabs.com/v1/proxy?quest=',
-    'https://api.cors.lol/?url=',
-    'https://thingproxy.freeboard.io/fetch/'
+    { prefix: 'https://api.allorigins.win/raw?url=', encode: true },
+    { prefix: 'https://corsproxy.io/?', encode: false },
+    { prefix: 'https://api.codetabs.com/v1/proxy?quest=', encode: false },
+    { prefix: 'https://api.cors.lol/?url=', encode: true },
+    { prefix: 'https://thingproxy.freeboard.io/fetch/', encode: false }
 ];
 
 // Fetch a URL through CORS proxies with fallback
@@ -2007,12 +2138,20 @@ function fetchViaProxy(url, timeoutMs) {
     timeoutMs = timeoutMs || 10000;
     var idx = 0;
     function tryNext() {
-        if (idx >= CORS_PROXIES.length) return Promise.reject(new Error('All proxies failed'));
+        if (idx >= CORS_PROXIES.length) return Promise.reject(new Error('All proxies failed for ' + url));
         var proxy = CORS_PROXIES[idx++];
-        return fetch(proxy + encodeURIComponent(url), {
+        var fetchUrl = proxy.prefix + (proxy.encode ? encodeURIComponent(url) : url);
+        return fetch(fetchUrl, {
             signal: AbortSignal.timeout ? AbortSignal.timeout(timeoutMs) : undefined
         }).then(function(res) {
-            return res.ok ? res.text() : Promise.reject();
+            if (!res.ok) return Promise.reject(new Error('HTTP ' + res.status));
+            return res.text();
+        }).then(function(html) {
+            // Validate we got actual HTML, not an error page from the proxy
+            if (!html || html.length < 200 || (html.indexOf('<html') === -1 && html.indexOf('<!DOCTYPE') === -1 && html.indexOf('<!doctype') === -1)) {
+                return Promise.reject(new Error('Invalid response from proxy'));
+            }
+            return html;
         }).catch(function() { return tryNext(); });
     }
     return tryNext();
@@ -3736,10 +3875,29 @@ function pushToNotion() {
 // ============ GROWTH PLAN ============
 
 function computeContentScore(type, channel, goal) {
-    var typeScores = { post:78, carousel:88, reel:85, story:72, thread:80, article:82, ad:86 };
-    var chanBonus  = { instagram:5, linkedin:4, tiktok:3, facebook:2, twitter:2, youtube:4, email:5, pinterest:2 };
-    var goalBonus  = { sales:5, leads:4, awareness:3, engagement:4, authority:3, community:2 };
-    return Math.min(100, (typeScores[type]||75) + (chanBonus[channel]||0) + (goalBonus[goal]||0));
+    // Goal-channel fit matrix: how well does this channel serve this goal?
+    var goalChannelFit = {
+        sales:      { instagram:8, facebook:7, pinterest:7, email:9, tiktok:5, linkedin:3, twitter:2, youtube:6 },
+        leads:      { linkedin:9, email:9, facebook:6, instagram:4, twitter:5, youtube:5, tiktok:2, pinterest:2 },
+        awareness:  { tiktok:9, instagram:8, youtube:8, twitter:6, facebook:5, pinterest:6, linkedin:4, email:2 },
+        engagement: { instagram:9, tiktok:8, twitter:7, facebook:6, youtube:7, linkedin:5, pinterest:4, email:3 },
+        authority:  { linkedin:9, youtube:8, twitter:6, email:5, instagram:4, facebook:3, tiktok:2, pinterest:2 },
+        community:  { instagram:8, facebook:8, twitter:7, tiktok:6, youtube:5, linkedin:4, email:4, pinterest:3 }
+    };
+    // Goal-type fit matrix: how well does this content type serve this goal?
+    var goalTypeFit = {
+        sales:      { ad:9, carousel:8, post:6, reel:7, story:5, email:9, article:4, thread:3 },
+        leads:      { article:9, ad:8, carousel:7, thread:7, post:6, email:8, reel:4, story:3 },
+        awareness:  { reel:9, story:7, carousel:7, post:6, thread:6, ad:5, article:5, email:3 },
+        engagement: { reel:9, carousel:8, story:7, post:7, thread:6, article:5, ad:4, email:3 },
+        authority:  { article:9, thread:8, carousel:7, post:6, reel:5, ad:4, story:3, email:6 },
+        community:  { post:8, reel:7, story:7, carousel:6, thread:6, article:5, email:4, ad:3 }
+    };
+    var chFit = (goalChannelFit[goal] || goalChannelFit.engagement)[channel] || 5;
+    var tyFit = (goalTypeFit[goal] || goalTypeFit.engagement)[type] || 5;
+    // Weighted combination: type fit (40%) + channel fit (40%) + base variance (20%)
+    var base = Math.round(tyFit * 4.5 + chFit * 4.5 + (Math.random() * 10 + 5));
+    return Math.min(98, Math.max(52, base));
 }
 
 // ═══════════════════════════════════════════════════════════════════════
