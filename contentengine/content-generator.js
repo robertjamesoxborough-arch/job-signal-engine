@@ -1997,7 +1997,9 @@ function renderAutoPullSection(client) {
 var CORS_PROXIES = [
     'https://api.allorigins.win/raw?url=',
     'https://corsproxy.io/?',
-    'https://api.codetabs.com/v1/proxy?quest='
+    'https://api.codetabs.com/v1/proxy?quest=',
+    'https://api.cors.lol/?url=',
+    'https://thingproxy.freeboard.io/fetch/'
 ];
 
 // Fetch a URL through CORS proxies with fallback
@@ -2028,6 +2030,7 @@ function deepCrawlWebsite(websiteUrl, callback) {
 
     var intelligence = {
         products: [],
+        services: [],
         brandVoice: { tone: '', keywords: [], phrases: [], sentenceStyle: '', emotionalTone: '' },
         siteDescription: '',
         tagline: '',
@@ -2059,6 +2062,18 @@ function deepCrawlWebsite(websiteUrl, callback) {
                 existingNames[p.name.toLowerCase()] = true;
             }
         });
+
+        // Merge services (dedup by name)
+        if (siteData.services && siteData.services.length > 0) {
+            var existingSvcNames = {};
+            intelligence.services.forEach(function(s) { existingSvcNames[s.name.toLowerCase()] = true; });
+            siteData.services.forEach(function(s) {
+                if (!existingSvcNames[s.name.toLowerCase()]) {
+                    intelligence.services.push(s);
+                    existingSvcNames[s.name.toLowerCase()] = true;
+                }
+            });
+        }
 
         // Merge images
         var existingUrls = {};
@@ -2128,14 +2143,18 @@ function deepCrawlWebsite(websiteUrl, callback) {
     crawledUrls[websiteUrl] = true;
     pendingCrawls++;
     pagesCrawled++;
+    var mainFetchFailed = false;
     fetchViaProxy(websiteUrl, 10000).then(function(html) {
         processPage(html, websiteUrl, true);
     }).catch(function() {
-        callback(null);
-        return;
+        mainFetchFailed = true;
     }).finally(function() {
         pendingCrawls--;
-        if (pendingCrawls === 0) finishCrawl();
+        if (mainFetchFailed && pendingCrawls === 0) {
+            callback(null);
+        } else if (pendingCrawls === 0) {
+            finishCrawl();
+        }
     });
 }
 
@@ -2150,7 +2169,7 @@ function findShopLinks(html, origin) {
         var fullUrl = resolveUrl(href, origin);
         if (!fullUrl) continue;
         if (seen[fullUrl]) continue;
-        if (/\/(shop|store|products?|collections?|catalog|category|categories|all|new-arrivals|best-sellers|sale)\b/i.test(fullUrl)) {
+        if (/\/(shop|store|products?|collections?|catalog|category|categories|all|new-arrivals|best-sellers|sale|services?|treatments?|our-(?:services|treatments|products|range)|what-we-(?:do|offer)|book(?:ing)?|appointment|prices?|pricing|menu|about(?:-us)?|team|brands?|range)\b/i.test(fullUrl)) {
             seen[fullUrl] = true;
             var label = href.split('/').filter(Boolean).pop() || 'shop';
             links.push({ url: fullUrl, label: label.replace(/[-_]/g, ' ') });
@@ -2616,13 +2635,25 @@ function extractSiteData(html, baseUrl) {
         var priceMatches = html.match(pricePattern) || [];
         data.prices = priceMatches.slice(0, 20).filter(function(p, i, arr) { return arr.indexOf(p) === i; });
 
-        // Look for product-like elements (common class patterns)
-        var productNameMatches = html.match(/<(?:h[23456]|a|span|div)[^>]*class=["'][^"']*(?:product[_-]?(?:name|title)|card[_-]?title|item[_-]?name)[^"']*["'][^>]*>([^<]{3,80})<\//gi) || [];
-        productNameMatches.forEach(function(m) {
-            var nameInner = m.match(/>([^<]+)<\//);
-            if (nameInner && nameInner[1].trim().length > 2) {
-                data.products.push({ name: nameInner[1].trim(), description: '', price: '', image: '' });
-            }
+        // Look for product-like elements — broad class matching
+        var productClassPatterns = [
+            /<(?:h[23456]|a|span|div)[^>]*class=["'][^"']*(?:product[_-]?(?:name|title)|card[_-]?title|item[_-]?name)[^"']*["'][^>]*>([^<]{3,80})<\//gi,
+            /<(?:h[23456]|a|span|div)[^>]*class=["'][^"']*(?:ProductItem|product-card|product-item|woocommerce|shopify)[^"']*["'][^>]*>([^<]{3,80})<\//gi,
+            /<(?:h[23456]|a|span)[^>]*class=["'][^"']*(?:title|name|heading)[^"']*["'][^>]*>([^<]{3,80})<\//gi
+        ];
+        productClassPatterns.forEach(function(pat) {
+            if (data.products.length >= 20) return;
+            var matches = html.match(pat) || [];
+            matches.forEach(function(m) {
+                var nameInner = m.match(/>([^<]+)<\//);
+                if (nameInner && nameInner[1].trim().length > 2 && data.products.length < 20) {
+                    var name = nameInner[1].trim();
+                    // Skip common non-product text
+                    if (!/^(home|about|contact|menu|close|search|log\s*in|sign\s*up|cart|basket|checkout|privacy|terms|cookie|accept|submit|subscribe|read more|learn more|view all|see all|load more|show more|back to|go to|click here|more info|newsletter|follow us)$/i.test(name)) {
+                        data.products.push({ name: name, description: '', price: '', image: '' });
+                    }
+                }
+            });
         });
 
         // Also try aria-label on product links
@@ -2633,13 +2664,63 @@ function extractSiteData(html, baseUrl) {
         });
     }
 
+    // 4b. Extract services/offerings (for service-based businesses)
+    data.services = [];
+    // Look for JSON-LD Service type
+    jsonLdMatches.forEach(function(block) {
+        var inner = block.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '');
+        try {
+            var ld = JSON.parse(inner);
+            var items = Array.isArray(ld) ? ld : [ld];
+            items.forEach(function(item) {
+                if (item['@type'] === 'Service' || item['@type'] === 'MedicalProcedure' || item['@type'] === 'HealthAndBeautyBusiness') {
+                    data.services.push({ name: item.name || '', description: (item.description || '').substring(0, 200), price: '' });
+                }
+                if (item['@type'] === 'LocalBusiness' || item['@type'] === 'Organization') {
+                    if (item.name && !data.tagline) data.tagline = item.name;
+                    if (item.description && (!data.description || item.description.length > data.description.length)) {
+                        data.description = item.description.substring(0, 300);
+                    }
+                }
+            });
+        } catch(e) {}
+    });
+    // Extract services from headings near service-related content
+    if (data.services.length === 0 && data.products.length === 0) {
+        var serviceSection = html.match(/(?:services?|treatments?|what we (?:do|offer)|our offerings?)[^]*?(<(?:ul|div|section)[^>]*>[\s\S]{10,3000}?<\/(?:ul|div|section)>)/i);
+        if (serviceSection) {
+            var serviceBlock = serviceSection[1];
+            var serviceItems = serviceBlock.match(/<(?:h[23456]|li|a|span)[^>]*>([^<]{3,80})<\//gi) || [];
+            serviceItems.forEach(function(m) {
+                var nameInner = m.match(/>([^<]+)<\//);
+                if (nameInner && nameInner[1].trim().length > 2 && data.services.length < 15) {
+                    var svcName = nameInner[1].trim();
+                    if (!/^(home|about|contact|menu|close|search|log\s*in|sign\s*up|read more|learn more)$/i.test(svcName)) {
+                        data.services.push({ name: svcName, description: '', price: '' });
+                    }
+                }
+            });
+        }
+        // Also look for heading tags containing service-like terms
+        if (data.services.length === 0) {
+            var serviceHeadings = html.match(/<h[23][^>]*>([^<]{5,60})<\/h[23]>/gi) || [];
+            var serviceKeywords = /eye\s*(?:test|exam|care)|contact\s*lens|glass|frame|optician|optometry|spectacle|consultation|fitting|check[\s-]*up|assessment|treatment|therapy|appointment|package|plan|membership/i;
+            serviceHeadings.forEach(function(m) {
+                var nameInner = m.match(/>([^<]+)<\//);
+                if (nameInner && serviceKeywords.test(nameInner[1]) && data.services.length < 15) {
+                    data.services.push({ name: nameInner[1].trim(), description: '', price: '' });
+                }
+            });
+        }
+    }
+
     // 5. Extract key page links (shop, collections, about, etc.)
     var linkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>([^<]{2,40})<\/a>/gi;
     var linkMatch;
     while ((linkMatch = linkPattern.exec(html)) !== null && data.links.length < 10) {
         var href = linkMatch[1];
         var text = linkMatch[2].trim();
-        if (/shop|collection|product|catalog|about|service/i.test(href) || /shop|collection|product|catalog|about|service/i.test(text)) {
+        if (/shop|collection|product|catalog|about|service|treatment|appointment|booking/i.test(href) || /shop|collection|product|catalog|about|service|treatment|booking/i.test(text)) {
             var fullHref = resolveUrl(href, origin) || href;
             data.links.push({ url: fullHref, text: text });
         }
@@ -2653,6 +2734,14 @@ function extractSiteData(html, baseUrl) {
         seen[key] = true;
         return true;
     }).slice(0, 20);
+    // Deduplicate services
+    var seenSvc = {};
+    data.services = data.services.filter(function(s) {
+        var key = s.name.toLowerCase();
+        if (seenSvc[key]) return false;
+        seenSvc[key] = true;
+        return true;
+    }).slice(0, 15);
 
     return data;
 }
@@ -4491,7 +4580,14 @@ function renderBrandIntelligence(client) {
     if (!section || !content) return;
 
     var intel = client ? client.intelligence : null;
-    if (!intel || !intel.products || intel.products.length === 0) {
+    var hasAnyData = intel && (
+        (intel.products && intel.products.length > 0) ||
+        (intel.services && intel.services.length > 0) ||
+        (intel.siteDescription && intel.siteDescription.length > 10) ||
+        (intel.brandVoice && intel.brandVoice.tone !== 'neutral') ||
+        (intel.allCopy && intel.allCopy.length > 0)
+    );
+    if (!intel || !hasAnyData) {
         // No intelligence yet — show scan prompt if website exists
         if (client && client.website) {
             section.style.display = 'block';
@@ -4509,9 +4605,22 @@ function renderBrandIntelligence(client) {
     var voice = intel.brandVoice || {};
     var strategies = generateContentStrategies(intel, client.name, client.goal || 'engagement');
     var products = intel.products || [];
+    var services = intel.services || [];
     var priceRange = intel.priceRange || { min: 0, max: 0, currency: '' };
 
     var html = '';
+
+    // Site overview (description & tagline)
+    if (intel.siteDescription || intel.tagline) {
+        html += '<div class="cg-bi-overview">';
+        html += '<h3>About This Brand</h3>';
+        if (intel.tagline) html += '<div class="cg-bi-tagline">' + escapeHtml(intel.tagline) + '</div>';
+        if (intel.siteDescription) html += '<p class="cg-bi-description">' + escapeHtml(intel.siteDescription) + '</p>';
+        if (intel.categories && intel.categories.length > 0) {
+            html += '<div class="cg-bi-keywords"><span class="cg-bi-label">Categories:</span> ' + intel.categories.map(function(c) { return '<span class="cg-bi-keyword">' + escapeHtml(c) + '</span>'; }).join(' ') + '</div>';
+        }
+        html += '</div>';
+    }
 
     // Voice summary
     html += '<div class="cg-bi-voice">';
@@ -4561,6 +4670,25 @@ function renderBrandIntelligence(client) {
         html += '</div></div>';
     }
 
+    // Services found (for non-ecommerce sites)
+    if (services.length > 0) {
+        html += '<div class="cg-bi-products">';
+        html += '<h3>Services & Offerings (' + services.length + ')</h3>';
+        html += '<div class="cg-bi-products-grid">';
+        services.slice(0, 12).forEach(function(s) {
+            html += '<div class="cg-bi-product-card">';
+            if (s.image) {
+                html += '<img src="' + escapeHtml(s.image) + '" alt="' + escapeHtml(s.name) + '" class="cg-bi-product-img" onerror="this.style.display=\'none\'">';
+            }
+            html += '<div class="cg-bi-product-info">';
+            html += '<div class="cg-bi-product-name">' + escapeHtml(s.name) + '</div>';
+            if (s.price) html += '<div class="cg-bi-product-price">' + escapeHtml(s.price) + '</div>';
+            if (s.description) html += '<div class="cg-bi-product-reason">' + escapeHtml(s.description.substring(0, 100)) + '</div>';
+            html += '</div></div>';
+        });
+        html += '</div></div>';
+    }
+
     // Popularity signals
     if (intel.popularSignals && intel.popularSignals.length > 0) {
         html += '<div class="cg-bi-signals">';
@@ -4601,8 +4729,12 @@ function refreshBrandIntelligence() {
 
     runBrandIntelligence(client.id, function(intel) {
         if (intel) {
-            var msg = intel.products.length + ' products';
-            if (intel.brandVoice.tone !== 'neutral') msg += ', voice: ' + intel.brandVoice.tone;
+            var parts = [];
+            if (intel.products.length > 0) parts.push(intel.products.length + ' products');
+            if (intel.services && intel.services.length > 0) parts.push(intel.services.length + ' services');
+            if (intel.brandVoice && intel.brandVoice.tone !== 'neutral') parts.push('voice: ' + intel.brandVoice.tone);
+            if (intel.siteDescription) parts.push('description found');
+            var msg = parts.length > 0 ? parts.join(', ') : 'site data captured';
             showToast('Scan complete: ' + msg, 'success');
             renderBrandIntelligence(client);
         } else {

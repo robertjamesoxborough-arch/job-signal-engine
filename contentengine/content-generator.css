@@ -4202,8 +4202,12 @@
 .cg-bi-empty { text-align: center; padding: 2rem; color: var(--gray-500); }
 .cg-bi-empty p { margin-bottom: 1rem; }
 
+.cg-bi-overview { margin-bottom: 1.25rem; }
+.cg-bi-tagline { font-size: 1rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.35rem; }
+.cg-bi-description { font-size: 0.875rem; color: var(--gray-600); line-height: 1.5; margin-bottom: 0.5rem; }
+
 .cg-bi-voice { margin-bottom: 1.25rem; }
-.cg-bi-voice h3, .cg-bi-strategies h3, .cg-bi-products h3, .cg-bi-signals h3, .cg-bi-proof h3 {
+.cg-bi-voice h3, .cg-bi-strategies h3, .cg-bi-products h3, .cg-bi-signals h3, .cg-bi-proof h3, .cg-bi-overview h3 {
     font-size: 0.875rem; font-weight: 600; color: var(--gray-700); margin-bottom: 0.5rem;
     text-transform: uppercase; letter-spacing: 0.04em;
 }
