@@ -807,6 +807,74 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
     };
     var voiceHooks = hooks[voiceTone] || hooks.neutral;
 
+    // ── Industry-aware language helpers ──
+    // These prevent fashion-biased copy leaking into furniture, eyewear, sports, etc.
+    var wts = whatTheySell.toLowerCase();
+    // How to describe interacting with the product
+    var useVerb = /furniture|home|decor|lighting|candle/.test(wts) ? 'styled in your space'
+        : /eyewear|glasses|sunglasses|optical/.test(wts) ? 'worn'
+        : /sneaker|shoe|footwear|boot|trainer/.test(wts) ? 'worn'
+        : /food|drink|supplement|coffee|tea|snack/.test(wts) ? 'tried'
+        : /software|saas|app|tech/.test(wts) ? 'used'
+        : /kit|equipment|gear/.test(wts) ? 'put to the test'
+        : 'used';
+    // Singular form for "your new favourite ___"
+    var singular = /sneakers/.test(wts) ? 'pair of sneakers'
+        : /glasses|sunglasses/.test(wts) ? 'pair of ' + wts
+        : /furniture/.test(wts) ? 'piece of furniture'
+        : /jewellery|jewelry/.test(wts) ? 'piece of jewellery'
+        : /clothing|apparel/.test(wts) ? 'piece'
+        : /kits/.test(wts) ? wts.replace(/s$/, '')
+        : wts;
+    // "3 ways to [verb] your [product]"
+    var showcaseVerb = /furniture|home|decor|lighting/.test(wts) ? 'use'
+        : /eyewear|glasses|sunglasses/.test(wts) ? 'wear'
+        : /sneaker|shoe|footwear|boot|trainer/.test(wts) ? 'wear'
+        : /food|drink|coffee|tea/.test(wts) ? 'enjoy'
+        : /software|saas|app|tech/.test(wts) ? 'use'
+        : /kit|equipment|gear|sports/.test(wts) ? 'use'
+        : 'style';
+    // Reel scenario labels (instead of "Casual everyday / Dressed up / Bold")
+    var scenarioLabels = /furniture|home|decor|lighting/.test(wts)
+        ? ['Living room setup', 'Bedroom refresh', 'Office upgrade']
+        : /eyewear|glasses|sunglasses/.test(wts)
+        ? ['Everyday look', 'Smart / office', 'Weekend vibes']
+        : /sneaker|shoe|footwear|boot|trainer/.test(wts)
+        ? ['Casual fit', 'Sporty look', 'Clean streetwear']
+        : /sports|kit|gym|fitness|athletic/.test(wts)
+        ? ['Training session', 'Match day', 'Recovery / off-duty']
+        : /food|drink|coffee|tea/.test(wts)
+        ? ['Morning ritual', 'Afternoon pick-me-up', 'Evening wind-down']
+        : /software|saas|app|tech/.test(wts)
+        ? ['Quick demo', 'Power user tip', 'Before vs after']
+        : ['Casual everyday', 'Dressed up / smart', 'Statement / bold'];
+    // Poll options for stories (instead of "Classic & timeless / Bold & statement")
+    var pollOptions = /furniture|home|decor/.test(wts)
+        ? ['Modern & minimal', 'Cosy & traditional', 'Scandi & clean', 'Eclectic & bold']
+        : /eyewear|glasses|sunglasses/.test(wts)
+        ? ['Classic frames', 'Bold & oversized', 'Minimalist wire', 'Retro vibes']
+        : /sneaker|shoe|footwear|boot|trainer/.test(wts)
+        ? ['Clean whites', 'Bold colourways', 'Retro classics', 'Performance-first']
+        : /sports|kit|gym|fitness/.test(wts)
+        ? ['Performance tech', 'Classic comfort', 'Bold & loud', 'Understated']
+        : /food|drink|coffee|tea/.test(wts)
+        ? ['Sweet tooth', 'Savoury lover', 'Healthy & clean', 'Comfort food']
+        : ['Classic & timeless', 'Bold & statement', 'Minimal & modern', 'Something totally unique'];
+    // Hashtag style tags (instead of #OOTD #StyleInspo for non-fashion)
+    var styleHashtags = /furniture|home|decor|lighting/.test(wts)
+        ? '#HomeInspo #InteriorDesign #HomeStyle'
+        : /eyewear|glasses|sunglasses/.test(wts)
+        ? '#EyewearStyle #Frames #Glasses'
+        : /sneaker|shoe|footwear|boot|trainer/.test(wts)
+        ? '#Sneakers #Kicks #SneakerHead'
+        : /sports|kit|gym|fitness/.test(wts)
+        ? '#SportStyle #FitKit #GameDay'
+        : /food|drink|coffee|tea/.test(wts)
+        ? '#FoodLover #Foodie #TasteTest'
+        : /software|saas|app|tech/.test(wts)
+        ? '#TechReview #SaaS #ProductDemo'
+        : '#StyleInspo #OOTD #HowToStyle';
+
     // Build content templates — intelligence-powered when data exists
     const contentTemplates = {
         post: hasProducts ? [
@@ -844,7 +912,7 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
         ] : [
             {
                 title: brandName + ' — Who We Are',
-                text: brandContext + '\n\nWe\'re not your average ' + whatTheySell + ' brand. Everything we do is designed to make you feel confident in what you choose.\n\n' + (uspLine ? uspLine + '\n\n' : '') + 'Come see what makes ' + brandName + ' different.\nLink in bio.',
+                text: brandContext + '\n\nWe\'re not your average ' + whatTheySell + ' brand. Everything we do is designed to make sure you get the best.\n\n' + (uspLine ? uspLine + '\n\n' : '') + 'Come see what makes ' + brandName + ' different.\nLink in bio.',
                 hashtags: baseHashtags + ' #ShopNow #' + brandTag
             },
             {
@@ -859,7 +927,7 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             },
             {
                 title: 'Customer Love',
-                text: '"I can\'t believe I waited so long to try ' + brandName + '."\n\nThat\'s what our customers keep telling us.\n\nWe don\'t just sell ' + whatTheySell + ' — we help you find the perfect match for your style.\n\n' + (siteDesc || brandContext) + '\n\nReady to see what the hype is about?\nLink in bio.',
+                text: '"I can\'t believe I waited so long to try ' + brandName + '."\n\nThat\'s what our customers keep telling us.\n\nWe don\'t just sell ' + whatTheySell + ' — we help you find exactly what you\'re looking for.\n\n' + (siteDesc || brandContext) + '\n\nReady to see what the hype is about?\nLink in bio.',
                 hashtags: baseHashtags + ' #CustomerLove #Reviews #RealPeople'
             },
             {
@@ -888,33 +956,33 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             },
             {
                 title: 'Poll Story',
-                text: 'Help us pick!\n\nWhich style are you?\n\nA) Classic & timeless\nB) Bold & statement\nC) Minimal & modern\nD) Something totally unique\n\nVote — we\'ll show the winner tomorrow!',
+                text: 'Help us pick!\n\nWhich ' + whatTheySell + ' vibe are you?\n\nA) ' + pollOptions[0] + '\nB) ' + pollOptions[1] + '\nC) ' + pollOptions[2] + '\nD) ' + pollOptions[3] + '\n\nVote — we\'ll show the winner tomorrow!',
                 hashtags: ''
             }
         ],
         reel: hasProducts ? [
             {
                 title: 'Product Reveal Reel — ' + prod(0),
-                text: 'HOOK: "The ' + whatTheySell + ' everyone\'s been asking about"\n\nSETUP: Close-up shots of ' + prod(0) + ' packaging / unboxing\n\nREVEAL: Show the product being used / worn / in action\n\nCTA: "Shop ' + prod(0) + ' — link in bio"\n\n' + (prodPrice(0) ? 'Price flash: ' + prodPrice(0) + '\n' : '') + 'Audio: Trending sound\nDuration: 15-30s\n\n[USE PRODUCT IMAGES/VIDEO]',
+                text: 'HOOK: "The ' + whatTheySell + ' everyone\'s been asking about"\n\nSETUP: Close-up shots of ' + prod(0) + ' packaging / unboxing\n\nREVEAL: Show the product being ' + useVerb + '\n\nCTA: "Shop ' + prod(0) + ' — link in bio"\n\n' + (prodPrice(0) ? 'Price flash: ' + prodPrice(0) + '\n' : '') + 'Audio: Trending sound\nDuration: 15-30s\n\n[USE PRODUCT IMAGES/VIDEO]',
                 hashtags: baseHashtags + ' #Reels #Unboxing' + productTags,
                 suggestedImage: prodImg(0)
             },
             {
                 title: 'How To Style/Use Reel — ' + prod(1),
-                text: '"3 ways to style ' + prod(1) + '"\n\nLook 1: [Show first use case / styling]\nLook 2: [Show second use case / styling]\nLook 3: [Show third use case / styling]\n\n"Which is your favourite? Comment below"\n\nDuration: 15-30s fast cuts\nFormat: Vertical, product-focused',
+                text: '"3 ways to ' + showcaseVerb + ' ' + prod(1) + '"\n\nLook 1: ' + scenarioLabels[0] + '\nLook 2: ' + scenarioLabels[1] + '\nLook 3: ' + scenarioLabels[2] + '\n\n"Which is your favourite? Comment below"\n\nDuration: 15-30s fast cuts\nFormat: Vertical, product-focused',
                 hashtags: baseHashtags + ' #StyleGuide #HowTo' + productTags,
                 suggestedImage: prodImg(1)
             }
         ] : [
             {
                 title: brandName + ' Unboxing Reel',
-                text: 'HOOK: "You need to see this ' + whatTheySell + ' brand"\n\nSETUP: Close-up of ' + brandName + ' packaging / unboxing\n\nREVEAL: Show the product up close — details, quality, textures\n\nCTA: "Shop ' + brandName + ' — link in bio"\n\nAudio: Trending sound\nDuration: 15-30s\nCaption: This is why people keep coming back...',
+                text: 'HOOK: "You need to see this ' + whatTheySell + ' brand"\n\nSETUP: Close-up of ' + brandName + ' packaging / unboxing\n\nREVEAL: Show the product being ' + useVerb + ' — details, quality, finish\n\nCTA: "Shop ' + brandName + ' — link in bio"\n\nAudio: Trending sound\nDuration: 15-30s\nCaption: This is why people keep coming back...',
                 hashtags: baseHashtags + ' #Reels #Unboxing #ShopSmall'
             },
             {
                 title: 'Styling Reel — ' + brandName,
-                text: '"3 ways to style your ' + brandName + ' ' + whatTheySell + '"\n\nLook 1: Casual everyday\nLook 2: Dressed up / evening\nLook 3: Statement / bold\n\n"Which is your vibe? Comment below"\n\nDuration: 15-30s fast cuts\nFormat: Vertical, product-focused\nAudio: Upbeat trending sound',
-                hashtags: baseHashtags + ' #StyleInspo #OOTD #HowToStyle'
+                text: '"3 ways to ' + showcaseVerb + ' your ' + brandName + ' ' + whatTheySell + '"\n\nLook 1: ' + scenarioLabels[0] + '\nLook 2: ' + scenarioLabels[1] + '\nLook 3: ' + scenarioLabels[2] + '\n\n"Which is your vibe? Comment below"\n\nDuration: 15-30s fast cuts\nFormat: Vertical, product-focused\nAudio: Upbeat trending sound',
+                hashtags: baseHashtags + ' ' + styleHashtags
             }
         ],
         carousel: hasProducts ? [
@@ -935,13 +1003,13 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
         email: hasProducts ? [
             {
                 title: 'Product Spotlight Email — ' + prod(0),
-                text: 'SUBJECT LINE: ' + prod(0) + ' is here — and it\'s exactly what you\'ve been waiting for\nPREVIEW TEXT: See why this is flying off the shelves\n\nHi [First Name],\n\n' + voiceHooks[0] + '.\n\nWe wanted you to be the first to know — ' + prod(0) + ' is ' + (prodCategory(0) === 'new' ? 'brand new' : 'one of our bestsellers') + '.\n\n' + (prodDesc(0) || brandContext) + '\n\n' + (prodPrice(0) ? prodPrice(0) + '\n\n' : '') + '[PRODUCT IMAGE: ' + (prodImg(0) || prod(0)) + ']\n\n[CTA BUTTON: Shop ' + prod(0) + ' Now]\n\nBest,\nThe ' + brandName + ' Team\n\n---\nALT SUBJECT LINES:\n• Your new favourite ' + whatTheySell + ' just landed\n• The one everyone\'s been asking about\n• ' + brandName + ': meet ' + prod(0),
+                text: 'SUBJECT LINE: ' + prod(0) + ' is here — and it\'s exactly what you\'ve been waiting for\nPREVIEW TEXT: See why this is flying off the shelves\n\nHi [First Name],\n\n' + voiceHooks[0] + '.\n\nWe wanted you to be the first to know — ' + prod(0) + ' is ' + (prodCategory(0) === 'new' ? 'brand new' : 'one of our bestsellers') + '.\n\n' + (prodDesc(0) || brandContext) + '\n\n' + (prodPrice(0) ? prodPrice(0) + '\n\n' : '') + '[PRODUCT IMAGE: ' + (prodImg(0) || prod(0)) + ']\n\n[CTA BUTTON: Shop ' + prod(0) + ' Now]\n\nBest,\nThe ' + brandName + ' Team\n\n---\nALT SUBJECT LINES:\n• Your new favourite ' + singular + ' just landed\n• The one everyone\'s been asking about\n• ' + brandName + ': meet ' + prod(0),
                 hashtags: '',
                 suggestedImage: prodImg(0)
             },
             {
                 title: 'Abandoned Cart Recovery Email',
-                text: 'SUBJECT LINE: You left something behind...\nPREVIEW TEXT: Your ' + whatTheySell + ' is still waiting for you\n\nHi [First Name],\n\nWe noticed you were checking out ' + (hasProducts ? prod(0) : 'some of our ' + whatTheySell) + ' — but didn\'t finish your order.\n\nNo pressure, but your items won\'t be reserved for long.\n\n[CART ITEMS WITH IMAGES]\n\n[CTA BUTTON: Complete Your Order]\n\nNeed help? Reply to this email — we\'re real people and we\'re here.\n\nThe ' + brandName + ' Team\n\n---\nSEND TIMING: 1 hour after cart abandonment\nFOLLOW-UP: 24hrs later with social proof / reviews\nFINAL: 48hrs with urgency (limited stock)',
+                text: 'SUBJECT LINE: You left something behind...\nPREVIEW TEXT: Your ' + singular + ' is still waiting for you\n\nHi [First Name],\n\nWe noticed you were checking out ' + (hasProducts ? prod(0) : 'some of our ' + whatTheySell) + ' — but didn\'t finish your order.\n\nNo pressure, but your items won\'t be reserved for long.\n\n[CART ITEMS WITH IMAGES]\n\n[CTA BUTTON: Complete Your Order]\n\nNeed help? Reply to this email — we\'re real people and we\'re here.\n\nThe ' + brandName + ' Team\n\n---\nSEND TIMING: 1 hour after cart abandonment\nFOLLOW-UP: 24hrs later with social proof / reviews\nFINAL: 48hrs with urgency (limited stock)',
                 hashtags: ''
             },
             {
@@ -957,7 +1025,7 @@ function generateContentPieces(brand, audience, qty, channels, tone, goal, types
             },
             {
                 title: 'Abandoned Cart Recovery Email',
-                text: 'SUBJECT LINE: Still thinking it over?\nPREVIEW TEXT: Your ' + whatTheySell + ' is still waiting\n\nHi [First Name],\n\nYou were so close.\n\nYour items from ' + brandName + ' are still in your cart — but we can\'t hold them forever.\n\n[CART ITEMS WITH IMAGES]\n\n[CTA BUTTON: Complete Your Order]\n\nQuestions? Just hit reply.\n\nThe ' + brandName + ' Team\n\n---\nSEND TIMING: 1 hour after abandonment\nNO DISCOUNT in first email — lead with product, not price',
+                text: 'SUBJECT LINE: Still thinking it over?\nPREVIEW TEXT: Your items are still waiting\n\nHi [First Name],\n\nYou were so close.\n\nYour items from ' + brandName + ' are still in your cart — but we can\'t hold them forever.\n\n[CART ITEMS WITH IMAGES]\n\n[CTA BUTTON: Complete Your Order]\n\nQuestions? Just hit reply.\n\nThe ' + brandName + ' Team\n\n---\nSEND TIMING: 1 hour after abandonment\nNO DISCOUNT in first email — lead with product, not price',
                 hashtags: ''
             }
         ],
@@ -1242,6 +1310,51 @@ function regenerateOne(id) {
         function prodName(i) { return products.length > 0 ? products[i % products.length].name : whatTheySell; }
         function prodP(i) { return products.length > 0 ? (products[i % products.length].price || '') : ''; }
 
+        // Industry-aware language (mirrors main generateContentPieces)
+        var wts = whatTheySell.toLowerCase();
+        var useVerb = /furniture|home|decor|lighting|candle/.test(wts) ? 'styled in your space'
+            : /eyewear|glasses|sunglasses|optical/.test(wts) ? 'worn'
+            : /sneaker|shoe|footwear|boot|trainer/.test(wts) ? 'worn'
+            : /food|drink|supplement|coffee|tea|snack/.test(wts) ? 'tried'
+            : /software|saas|app|tech/.test(wts) ? 'used'
+            : /kit|equipment|gear/.test(wts) ? 'put to the test'
+            : 'used';
+        var showcaseVerb = /furniture|home|decor|lighting/.test(wts) ? 'use'
+            : /eyewear|glasses|sunglasses/.test(wts) ? 'wear'
+            : /sneaker|shoe|footwear|boot|trainer/.test(wts) ? 'wear'
+            : /food|drink|coffee|tea/.test(wts) ? 'enjoy'
+            : /kit|equipment|gear|sports/.test(wts) ? 'use'
+            : 'style';
+        var scenarioLabels = /furniture|home|decor|lighting/.test(wts)
+            ? ['Living room setup', 'Bedroom refresh', 'Office upgrade']
+            : /eyewear|glasses|sunglasses/.test(wts)
+            ? ['Everyday look', 'Smart / office', 'Weekend vibes']
+            : /sneaker|shoe|footwear|boot|trainer/.test(wts)
+            ? ['Casual fit', 'Sporty look', 'Clean streetwear']
+            : /sports|kit|gym|fitness|athletic/.test(wts)
+            ? ['Training session', 'Match day', 'Recovery / off-duty']
+            : /food|drink|coffee|tea/.test(wts)
+            ? ['Morning ritual', 'Afternoon pick-me-up', 'Evening wind-down']
+            : ['Casual everyday', 'Dressed up / smart', 'Statement / bold'];
+        var pollOptions = /furniture|home|decor/.test(wts)
+            ? ['Modern & minimal', 'Cosy & traditional']
+            : /eyewear|glasses|sunglasses/.test(wts)
+            ? ['Classic frames', 'Bold & oversized']
+            : /sneaker|shoe|footwear|boot|trainer/.test(wts)
+            ? ['Clean whites', 'Bold colourways']
+            : /sports|kit|gym|fitness/.test(wts)
+            ? ['Performance tech', 'Classic comfort']
+            : ['Classic & timeless', 'Bold & modern'];
+        var styleHashtags = /furniture|home|decor|lighting/.test(wts)
+            ? '#HomeInspo #InteriorDesign'
+            : /eyewear|glasses|sunglasses/.test(wts)
+            ? '#EyewearStyle #Frames'
+            : /sneaker|shoe|footwear|boot|trainer/.test(wts)
+            ? '#Sneakers #Kicks'
+            : /sports|kit|gym|fitness/.test(wts)
+            ? '#SportStyle #FitKit'
+            : '#StyleInspo #HowToStyle';
+
         const brandTag = '#' + brandName.replace(/[^a-zA-Z0-9]/g, '');
         const industryTag = '#' + industry.replace(/[^a-zA-Z0-9]/g, '');
         const goalTags = {
@@ -1277,8 +1390,8 @@ function regenerateOne(id) {
             ],
             reel: [
                 { title: brandName + ' Unboxing', text: 'HOOK: "Wait till you see this ' + whatTheySell + '"\n\nSETUP: Show ' + brandName + ' packaging close-up\nREVEAL: Unbox the product — show details, texture, quality\nCTA: "Shop ' + brandName + ' — link in bio"\n\nDuration: 15-30s\nAudio: Trending unboxing sound', hashtags: baseHashtags + ' #Unboxing #Reels' },
-                { title: 'Styling Reel', text: '"3 ways to style your ' + brandName + ' ' + whatTheySell + '"\n\nLook 1: Casual everyday\nLook 2: Smart / dressed up\nLook 3: Bold statement\n\n"Which is your favourite? Comment below"\n\nDuration: 15-30s\nFormat: Vertical, fast cuts', hashtags: baseHashtags + ' #StyleInspo #HowToStyle' },
-                { title: 'POV Reel', text: 'HOOK: "POV: You just discovered ' + brandName + '"\n\n[Show scrolling website / unboxing / wearing]\n\nTEXT OVERLAY: "Why didn\'t I find this sooner?"\n\nCTA: "Link in bio — you\'re welcome"\n\nDuration: 15s\nAudio: Trending "discovery" sound\nFormat: Vertical, POV perspective', hashtags: baseHashtags + ' #POV #Reels #ViralFormat' },
+                { title: 'Showcase Reel', text: '"3 ways to ' + showcaseVerb + ' your ' + brandName + ' ' + whatTheySell + '"\n\nLook 1: ' + scenarioLabels[0] + '\nLook 2: ' + scenarioLabels[1] + '\nLook 3: ' + scenarioLabels[2] + '\n\n"Which is your favourite? Comment below"\n\nDuration: 15-30s\nFormat: Vertical, fast cuts', hashtags: baseHashtags + ' ' + styleHashtags },
+                { title: 'POV Reel', text: 'HOOK: "POV: You just discovered ' + brandName + '"\n\n[Show scrolling website / unboxing / product being ' + useVerb + ']\n\nTEXT OVERLAY: "Why didn\'t I find this sooner?"\n\nCTA: "Link in bio — you\'re welcome"\n\nDuration: 15s\nAudio: Trending "discovery" sound\nFormat: Vertical, POV perspective', hashtags: baseHashtags + ' #POV #Reels #ViralFormat' },
             ],
             carousel: [
                 { title: brandName + ' Collection', text: 'Slide 1: "The ' + brandName + ' Edit"\n[Hero shot]\n\nSlide 2: "Our Bestsellers"\n[Show top products]\n\nSlide 3: "What makes us different"\n[USPs]\n\nSlide 4: "What customers say"\n[Quote]\n\nSlide 5: "Shop now — link in bio"', hashtags: baseHashtags + ' #ShopNow #Collection' },
@@ -1286,7 +1399,7 @@ function regenerateOne(id) {
             ],
             story: [
                 { title: 'New Drop Story', text: 'NEW from ' + brandName + '\n\nFresh ' + whatTheySell + ' just dropped\n\nTap to shop now', hashtags: '' },
-                { title: 'Quick Poll Story', text: 'Which one are you?\n\nA) ' + (products.length >= 2 ? prodName(0) : 'Classic & timeless') + '\nB) ' + (products.length >= 2 ? prodName(1) : 'Bold & modern') + '\n\n[POLL STICKER]\n\nWe\'ll reveal the winner tomorrow!', hashtags: '' },
+                { title: 'Quick Poll Story', text: 'Which one are you?\n\nA) ' + (products.length >= 2 ? prodName(0) : pollOptions[0]) + '\nB) ' + (products.length >= 2 ? prodName(1) : pollOptions[1]) + '\n\n[POLL STICKER]\n\nWe\'ll reveal the winner tomorrow!', hashtags: '' },
             ],
             email: [
                 { title: 'Flash Sale Email', text: 'SUBJECT LINE: 24 hours only — ' + brandName + ' flash sale\nPREVIEW TEXT: Don\'t miss this\n\nHi [First Name],\n\n' + seasonalHook + '\n\nFor the next 24 hours, get [X]% off everything at ' + brandName + '.\n\n' + (products.length > 0 ? 'Including:\n→ ' + prodName(0) + '\n→ ' + prodName(1) + '\n→ ' + prodName(2) : 'Our entire collection of ' + whatTheySell) + '\n\n[CTA BUTTON: Shop the Sale]\n\nEnds midnight. No extensions.\n\nThe ' + brandName + ' Team', hashtags: '' },
@@ -4274,7 +4387,7 @@ function generateDecisions(client, scores) {
         }
         if (isEcom) {
             return {
-                minimum: 'Create one product showcase post for your highest-margin or best-selling product. Use real product photography, not stock. Show the product in context (being used, worn, eaten — not on a white background).',
+                minimum: 'Create one product showcase post for your highest-margin or best-selling product. Use real product photography, not stock. Show the product in context (being used in real life — not on a white background).',
                 full: '3 product posts, 2 carousels, 2 Reels, 1 ad creative.',
                 constraint: 'Do NOT create generic lifestyle or motivational content. Every post should feature a specific product.'
             };
