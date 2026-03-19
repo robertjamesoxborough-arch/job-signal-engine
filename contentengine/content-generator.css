@@ -4268,6 +4268,18 @@
     padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 500;
 }
 
+.cg-bi-socials { margin-bottom: 1.25rem; }
+.cg-bi-social-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.cg-bi-social-link {
+    display: flex; align-items: center; gap: 0.4rem;
+    background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px;
+    padding: 0.4rem 0.75rem; text-decoration: none; transition: all 0.2s;
+}
+.cg-bi-social-link:hover { border-color: var(--blue-400); background: rgba(59, 130, 246, 0.04); }
+.cg-bi-social-icon { font-size: 1rem; }
+.cg-bi-social-name { font-size: 0.8rem; font-weight: 600; color: var(--gray-700); }
+.cg-bi-social-handle { font-size: 0.7rem; color: var(--gray-500); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 .cg-bi-proof { margin-bottom: 1rem; }
 .cg-bi-proof-item {
     font-size: 0.85rem; color: var(--gray-600); padding: 0.3rem 0;

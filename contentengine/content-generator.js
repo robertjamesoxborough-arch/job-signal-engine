@@ -2040,6 +2040,7 @@ function deepCrawlWebsite(websiteUrl, callback) {
         popularSignals: [],
         images: [],
         shopLinks: [],
+        socialLinks: {},
         socialProof: [],
         competitorHints: []
     };
@@ -2099,6 +2100,14 @@ function deepCrawlWebsite(websiteUrl, callback) {
 
         extractSocialProof(html, intelligence);
         extractPopularitySignals(html, intelligence);
+
+        // Extract social links from page
+        var pageSocials = extractSocialLinks(html);
+        Object.keys(pageSocials).forEach(function(platform) {
+            if (!intelligence.socialLinks[platform]) {
+                intelligence.socialLinks[platform] = pageSocials[platform];
+            }
+        });
 
         // Find and crawl shop sub-pages
         if (isMain) {
@@ -2233,6 +2242,39 @@ function extractPopularitySignals(html, intelligence) {
             intelligence.popularSignals.push({ signal: p.signal, count: m.length });
         }
     });
+}
+
+// Extract social media links from page HTML
+function extractSocialLinks(html) {
+    var socials = {};
+    var linkPattern = /<a[^>]+href=["']([^"']+)["'][^>]*>/gi;
+    var match;
+    while ((match = linkPattern.exec(html)) !== null) {
+        var href = match[1];
+        if (/instagram\.com\/([a-zA-Z0-9_.]+)/i.test(href)) {
+            var ig = href.match(/instagram\.com\/([a-zA-Z0-9_.]+)/i);
+            if (ig && ig[1] !== 'p' && ig[1] !== 'explore' && ig[1] !== 'accounts' && ig[1] !== 'reel' && ig[1] !== 'stories') {
+                socials.instagram = href.split('?')[0];
+            }
+        } else if (/facebook\.com\/([a-zA-Z0-9_.]+)/i.test(href)) {
+            var fb = href.match(/facebook\.com\/([a-zA-Z0-9_.]+)/i);
+            if (fb && fb[1] !== 'sharer' && fb[1] !== 'share' && fb[1] !== 'dialog' && fb[1] !== 'login') {
+                socials.facebook = href.split('?')[0];
+            }
+        } else if (/tiktok\.com\/@([a-zA-Z0-9_.]+)/i.test(href)) {
+            socials.tiktok = href.split('?')[0];
+        } else if (/linkedin\.com\/(?:company|in)\/([a-zA-Z0-9_-]+)/i.test(href)) {
+            socials.linkedin = href.split('?')[0];
+        } else if (/(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)/i.test(href)) {
+            var tw = href.match(/(?:twitter\.com|x\.com)\/([a-zA-Z0-9_]+)/i);
+            if (tw && tw[1] !== 'share' && tw[1] !== 'intent' && tw[1] !== 'home') {
+                socials.twitter = href.split('?')[0];
+            }
+        } else if (/youtube\.com\/(?:channel|c|@|user)\/([a-zA-Z0-9_-]+)/i.test(href)) {
+            socials.youtube = href.split('?')[0];
+        }
+    }
+    return socials;
 }
 
 // ── BRAND VOICE ANALYSER ──
@@ -2459,6 +2501,16 @@ function runBrandIntelligence(clientId, callback) {
             if (!clientAssets[client.id]) clientAssets[client.id] = {};
             clientAssets[client.id].autoPulled = intelligence.images.slice(0, 12);
             saveClientAssets();
+        }
+
+        // Auto-populate social URLs from crawled links (don't overwrite manually entered ones)
+        if (intelligence.socialLinks && Object.keys(intelligence.socialLinks).length > 0) {
+            if (!client.socialUrls) client.socialUrls = {};
+            Object.keys(intelligence.socialLinks).forEach(function(platform) {
+                if (!client.socialUrls[platform]) {
+                    client.socialUrls[platform] = intelligence.socialLinks[platform];
+                }
+            });
         }
 
         saveClients();
@@ -4697,6 +4749,25 @@ function renderBrandIntelligence(client) {
             html += '<span class="cg-bi-signal">' + escapeHtml(s.signal) + ' (' + s.count + ')</span>';
         });
         html += '</div>';
+    }
+
+    // Social profiles found
+    if (intel.socialLinks && Object.keys(intel.socialLinks).length > 0) {
+        var platformIcons = { instagram: '📷', facebook: '👤', tiktok: '🎵', linkedin: '💼', twitter: '🐦', youtube: '▶️' };
+        var platformNames = { instagram: 'Instagram', facebook: 'Facebook', tiktok: 'TikTok', linkedin: 'LinkedIn', twitter: 'X / Twitter', youtube: 'YouTube' };
+        html += '<div class="cg-bi-socials">';
+        html += '<h3>Social Profiles Found</h3>';
+        html += '<div class="cg-bi-social-grid">';
+        Object.keys(intel.socialLinks).forEach(function(platform) {
+            var url = intel.socialLinks[platform];
+            var handle = url.replace(/https?:\/\/(www\.)?/, '').replace(/\/$/, '');
+            html += '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" class="cg-bi-social-link">';
+            html += '<span class="cg-bi-social-icon">' + (platformIcons[platform] || '🔗') + '</span>';
+            html += '<span class="cg-bi-social-name">' + (platformNames[platform] || platform) + '</span>';
+            html += '<span class="cg-bi-social-handle">' + escapeHtml(handle) + '</span>';
+            html += '</a>';
+        });
+        html += '</div></div>';
     }
 
     // Social proof
